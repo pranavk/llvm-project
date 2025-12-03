@@ -316,12 +316,19 @@ public:
       Opts["cl_amd_media_ops"] = true;
       Opts["cl_amd_media_ops2"] = true;
 
+      // FIXME: Check subtarget for image support.
       Opts["__opencl_c_images"] = true;
       Opts["__opencl_c_3d_image_writes"] = true;
+      Opts["__opencl_c_read_write_images"] = true;
       Opts["cl_khr_3d_image_writes"] = true;
+      Opts["__opencl_c_program_scope_global_variables"] = true;
+      Opts["__opencl_c_atomic_order_seq_cst"] = true;
+      Opts["__opencl_c_atomic_scope_all_devices"] = true;
 
-      Opts["__opencl_c_generic_address_space"] =
-          GPUKind >= llvm::AMDGPU::GK_GFX700;
+      if (GPUKind >= llvm::AMDGPU::GK_GFX700) {
+        Opts["__opencl_c_generic_address_space"] = true;
+        Opts["__opencl_c_device_enqueue"] = true;
+      }
     }
   }
 
