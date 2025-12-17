@@ -1232,6 +1232,5 @@ cc_library(
         "//mlir:VectorTransforms",
         "//mlir:XeGPUDialect",
         "//mlir:XeGPUTransforms",
-        "//mlir:XeGPUUtils",
     ],
 )

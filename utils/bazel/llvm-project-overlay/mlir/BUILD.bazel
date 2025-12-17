@@ -3710,8 +3710,14 @@ gentbl_cc_library(
 
 cc_library(
     name = "XeGPUDialect",
-    srcs = glob(["lib/Dialect/XeGPU/IR/*.cpp"]),
-    hdrs = glob(["include/mlir/Dialect/XeGPU/IR/*.h"]),
+    srcs = glob([
+        "lib/Dialect/XeGPU/IR/*.cpp",
+        "lib/Dialect/XeGPU/Utils/*.cpp",
+    ]),
+    hdrs = glob([
+        "include/mlir/Dialect/XeGPU/IR/*.h",
+        "include/mlir/Dialect/XeGPU/Utils/*.h",
+    ]),
     includes = ["include"],
     deps = [
         ":AffineUtils",
@@ -3722,8 +3728,12 @@ cc_library(
         ":GPUDialect",
         ":IR",
         ":IndexDialect",
+        ":LLVMDialect",
+        ":LoopLikeInterface",
+        ":SCFTransforms",
         ":ShapedOpInterfaces",
         ":SideEffectInterfaces",
+        ":TransformUtils",
         ":VectorDialect",
         ":ViewLikeInterface",
         ":XeGPUAttrInterfaceIncGen",
@@ -3780,27 +3790,7 @@ cc_library(
         ":VectorTransforms",
         ":XeGPUDialect",
         ":XeGPUPassIncGen",
-        ":XeGPUUtils",
-        "//llvm:Support",
-    ],
-)
-
-cc_library(
-    name = "XeGPUUtils",
-    srcs = glob(["lib/Dialect/XeGPU/Utils/*.cpp"]),
-    hdrs = glob(["include/mlir/Dialect/XeGPU/Utils/*.h"]),
-    includes = ["include"],
-    deps = [
-        ":DialectUtils",
-        ":GPUDialect",
-        ":IR",
-        ":IndexDialect",
-        ":LLVMDialect",
-        ":LoopLikeInterface",
-        ":SCFTransforms",
-        ":TransformUtils",
-        ":XeGPUDialect",
-        ":XeVMDialect",
+        ":XeGPUuArch",
         "//llvm:Support",
     ],
 )
@@ -8161,7 +8151,6 @@ cc_library(
         ":Transforms",
         ":VectorDialect",
         ":XeGPUDialect",
-        ":XeGPUUtils",
         "//llvm:Support",
     ],
 )
@@ -14310,7 +14299,6 @@ cc_library(
         ":TransformUtils",
         ":VectorDialect",
         ":XeGPUDialect",
-        ":XeGPUUtils",
         ":XeVMDialect",
         "//llvm:Support",
     ],
