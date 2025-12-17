@@ -4796,6 +4796,7 @@ cc_library(
         ":InliningUtils",
         ":SideEffectInterfaces",
         "//llvm:Support",
+        ":UBDialect",
     ],
 )
 
