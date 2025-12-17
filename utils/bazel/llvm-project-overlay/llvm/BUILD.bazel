@@ -1505,9 +1505,10 @@ cc_library(
     name = "TransformUtils",
     srcs = glob([
         "lib/Transforms/Utils/*.cpp",
-    ]),
+    ]) + ["lib/Transforms/Instrumentation/KCFI.cpp"],
     hdrs = glob(["include/llvm/Transforms/Utils/*.h"]) + [
         "include/llvm/Transforms/Utils.h",
+        "include/llvm/Transforms/Instrumentation/KCFI.h",
     ],
     copts = llvm_copts,
     deps = [
@@ -1584,7 +1585,7 @@ cc_library(
         "lib/Transforms/Instrumentation/*.cpp",
         "lib/Transforms/Instrumentation/*.h",
         "lib/Transforms/Instrumentation/*.inc",
-    ]),
+    ], exclude = ["lib/Transforms/Instrumentation/KCFI.cpp"]),
     hdrs = glob(["include/llvm/Transforms/Instrumentation/*.h"]) + [
         "include/llvm/Transforms/Utils/Instrumentation.h",
     ],
