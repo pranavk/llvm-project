@@ -2871,6 +2871,10 @@ llvm_target_lib_list = [lib for lib in [
                 "lib/Target/NVPTX/NVPTXGenDAGISel.inc",
             ),
             (
+                ["-gen-sd-node-info"],
+                "lib/Target/NVPTX/NVPTXGenSDNodeInfo.inc",
+            ),
+            (
                 ["-gen-subtarget"],
                 "lib/Target/NVPTX/NVPTXGenSubtargetInfo.inc",
             ),
