@@ -3882,9 +3882,11 @@ cc_library(
     deps = [
         ":DialectUtils",
         ":IR",
+        ":LoopLikeInterface",
         ":SCFDialect",
         ":TransformDialect",
         ":TransformDialectInterfaces",
+        "//llvm:Support",
         ":XeGPUDialect",
         ":XeGPUTransformOpsIncGen",
         ":XeGPUUtils",
