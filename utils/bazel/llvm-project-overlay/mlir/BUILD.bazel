@@ -1698,6 +1698,14 @@ gentbl_cc_library(
         "include/mlir/Dialect/AMDGPU/IR/AMDGPUEnums.cpp.inc": ["-gen-enum-defs"],
         "include/mlir/Dialect/AMDGPU/IR/AMDGPU.h.inc": ["-gen-op-decls"],
         "include/mlir/Dialect/AMDGPU/IR/AMDGPU.cpp.inc": ["-gen-op-defs"],
+        "include/mlir/Dialect/AMDGPU/IR/AMDGPUTypes.h.inc": [
+            "-gen-typedef-decls",
+            "-typedefs-dialect=amdgpu",
+        ],
+        "include/mlir/Dialect/AMDGPU/IR/AMDGPUTypes.cpp.inc": [
+            "-gen-typedef-defs",
+            "-typedefs-dialect=amdgpu",
+        ],
         "g3doc/Dialects/AMDGPU/IR/AMDGPU.md": ["-gen-op-doc"],
     },
     tblgen = ":mlir-tblgen",
