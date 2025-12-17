@@ -5807,6 +5807,7 @@ cc_library(
     ]),
     includes = ["include"],
     deps = [
+        ":AMDGPUToROCDL",
         ":AMDGPUDialect",
         ":AMDGPUUtils",
         ":AffineDialect",
