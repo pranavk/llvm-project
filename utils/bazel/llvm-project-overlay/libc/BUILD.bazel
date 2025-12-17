@@ -1724,11 +1724,22 @@ libc_support_library(
 )
 
 libc_support_library(
+    name = "__support_time_units",
+    hdrs = ["src/__support/time/units.h"],
+    deps = [
+        ":__support_common",
+        ":types_time_t"
+    ],
+)
+
+libc_support_library(
     name = "__support_time",
-    hdrs = glob(["src/__support/time/*.h"]),
+    hdrs = glob(["src/__support/time/*.h"], exclude = ["src/__support/time/units.h"]),
     deps = [
         ":__support_common",
         ":__support_error_or",
+        ":__support_time_clock_gettime",
+        ":__support_time_units",
         ":hdr_time_macros",
         ":types_clockid_t",
         ":types_struct_timespec",
@@ -1745,24 +1756,13 @@ libc_support_library(
     }),
     deps = [
         ":__support_cpp_expected",
-        ":__support_time",
+        ":__support_time_units",
         ":hdr_time_macros",
         ":types_struct_timespec",
     ],
 )
 
-libc_support_library(
-    name = "__support_time_linux_clock_conversion",
-    hdrs = ["src/__support/time/linux/clock_conversion.h"],
-    target_compatible_with = select({
-        "@platforms//os:linux": [],
-        "//conditions:default": ["@platforms//:incompatible"],
-    }),
-    deps = [
-        ":__support_time",
-        ":__support_time_clock_gettime",
-    ],
-)
+
 
 libc_support_library(
     name = "__support_time_clock_gettime",
@@ -1789,8 +1789,8 @@ libc_support_library(
     }),
     deps = [
         ":__support_libc_assert",
+        ":__support_time",
         ":__support_time_linux_abs_timeout",
-        ":__support_time_linux_clock_conversion",
         ":hdr_time_macros",
     ],
 )
