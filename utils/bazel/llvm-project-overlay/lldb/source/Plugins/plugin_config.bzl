@@ -72,7 +72,7 @@ DEFAULT_PLUGINS = [
     "ProcessMachCore",
     "ProcessMinidump",
     "RegisterTypeBuilderClang",
-    "ScriptedProcess",
+
     "StructuredDataDarwinLog",
     "SymbolFileBreakpad",
     "SymbolFileCTF",
