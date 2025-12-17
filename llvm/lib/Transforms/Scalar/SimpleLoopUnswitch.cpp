@@ -388,8 +388,8 @@ static void buildPartialInvariantUnswitchConditionalBranch(
       IRB.CreateCondBr(Cond, Direction ? &UnswitchedSucc : &NormalSucc,
                        Direction ? &NormalSucc : &UnswitchedSucc, ProfData);
   if (!ProfData)
-    setExplicitlyUnknownBranchWeightsIfProfiled(*BR, *BR->getFunction(),
-                                                DEBUG_TYPE);
+    setExplicitlyUnknownBranchWeightsIfProfiled(*BR, DEBUG_TYPE,
+                                                BR->getFunction());
 }
 
 /// Rewrite the PHI nodes in an unswitched loop exit basic block.
@@ -3204,7 +3204,7 @@ injectPendingInvariantConditions(NonTrivialUnswitchCandidate Candidate, Loop &L,
       Builder.CreateCondBr(InjectedCond, InLoopSucc, CheckBlock);
   // We don't know anything about the relation between the limits.
   setExplicitlyUnknownBranchWeightsIfProfiled(
-      *InvariantBr, *InvariantBr->getParent()->getParent(), DEBUG_TYPE);
+      *InvariantBr, DEBUG_TYPE, InvariantBr->getParent()->getParent());
 
   Builder.SetInsertPoint(CheckBlock);
   Builder.CreateCondBr(
