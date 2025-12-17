@@ -1048,10 +1048,10 @@ expand_template(
 
 gentbl_cc_library(
     name = "lldb_dap_opts_gen",
-    strip_include_prefix = "tools/lldb-dap",
-    tbl_outs = {"tools/lldb-dap/Options.inc": ["-gen-opt-parser-defs"]},
+    strip_include_prefix = "tools/lldb-dap/tool",
+    tbl_outs = {"tools/lldb-dap/tool/Options.inc": ["-gen-opt-parser-defs"]},
     tblgen = "//llvm:llvm-tblgen",
-    td_file = "tools/lldb-dap/Options.td",
+    td_file = "tools/lldb-dap/tool/Options.td",
     deps = ["//llvm:OptParserTdFiles"],
 )
 
