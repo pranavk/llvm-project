@@ -223,6 +223,20 @@ genrule(
 )
 
 cc_library(
+    name = "Extensions",
+    srcs = glob([
+        "lib/Extensions/*.cpp",
+    ]),
+    hdrs = glob([
+        "include/llvm/Extensions/*.h",
+    ]),
+    copts = llvm_copts,
+    deps = [
+        ":Support",
+    ],
+)
+
+cc_library(
     name = "Support",
     srcs = glob([
         "lib/Support/*.c",
@@ -3917,6 +3931,7 @@ cc_library(
         ":CodeGen",
         ":CodeGenTypes",
         ":Core",
+        ":Extensions",
         ":IPO",
         ":IRPrinter",
         ":IRReader",
@@ -4552,6 +4567,7 @@ cc_binary(
         ":CodeGen",
         ":CodeGenTypes",
         ":Core",
+        ":Extensions",
         ":IRPrinter",
         ":IRReader",
         ":MC",
@@ -5287,6 +5303,7 @@ cc_binary(
         ":BitReader",
         ":CodeGen",
         ":Core",
+        ":Extensions",
         ":LTO",
         ":Passes",
         ":Remarks",
@@ -6071,6 +6088,7 @@ cc_library(
         ":BitWriter",
         ":CodeGen",
         ":Core",
+        ":Extensions",
         ":IPO",
         ":IRPrinter",
         ":IRReader",
@@ -6310,6 +6328,7 @@ cc_binary(
         ":BitWriter",
         ":CodeGen",
         ":Core",
+        ":Extensions",
         ":IPO",
         ":IRPrinter",
         ":IRReader",
