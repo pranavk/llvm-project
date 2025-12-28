@@ -1231,10 +1231,10 @@ cc_library(
         ":format",
         ":frontend",
         ":lex",
+        ":options",
         ":rewrite",
         ":support",
         ":tooling_core",
-        "//llvm:Option",
         "//llvm:Support",
         "//llvm:TargetParser",
     ],
@@ -1369,7 +1369,6 @@ cc_library(
         ":basic",
         ":frontend",
         ":index",
-        "//llvm:Option",
         "//llvm:Support",
         "//llvm:TargetParser",
     ],
@@ -1508,6 +1507,25 @@ gentbl_cc_library(
 )
 
 cc_library(
+    name = "options",
+    srcs = [
+        "lib/Options/DriverOptions.cpp",
+        "lib/Options/OptionUtils.cpp",
+    ],
+    hdrs = glob([
+        "include/clang/Options/*.h",
+    ]),
+    textual_hdrs = ["include/clang/Options/Options.inc"],
+    includes = ["include"],
+    deps = [
+        ":basic",
+        ":config",
+        ":driver_options_inc_gen",
+        "//llvm:Support",
+    ],
+)
+
+cc_library(
     name = "driver",
     srcs = glob(
         [
@@ -1519,6 +1537,8 @@ cc_library(
         ],
         exclude = [
             "lib/Driver/ToolChains/MSVCSetupApi.h",
+            "lib/Driver/DriverOptions.cpp",
+            "lib/Driver/OptionUtils.cpp",
         ],
     ),
     hdrs = glob([
@@ -1542,8 +1562,8 @@ cc_library(
         ":ast",
         ":basic",
         ":config",
-        ":driver_options_inc_gen",
         ":lex",
+        ":options",
         ":parse",
         ":static_analyzer_checkers_gen",
         "//llvm:BinaryFormat",
@@ -1551,7 +1571,6 @@ cc_library(
         "//llvm:Instrumentation",
         "//llvm:MC",
         "//llvm:Object",
-        "//llvm:Option",
         "//llvm:ProfileData",
         "//llvm:Support",
         "//llvm:Target",
@@ -1697,9 +1716,9 @@ cc_library(
         ":basic",
         ":config",
         ":driver",
-        ":driver_options_inc_gen",
         ":edit",
         ":lex",
+        ":options",
         ":parse",
         ":sema",
         ":serialization",
@@ -1713,7 +1732,6 @@ cc_library(
         "//llvm:FrontendDebug",
         "//llvm:Linker",
         "//llvm:MC",
-        "//llvm:Option",
         "//llvm:ProfileData",
         "//llvm:Remarks",
         "//llvm:Support",
@@ -2002,7 +2020,6 @@ cc_library(
         ":frontend",
         ":frontend_rewrite",
         ":static_analyzer_frontend",
-        "//llvm:Option",
         "//llvm:Support",
     ],
 )
@@ -2189,7 +2206,6 @@ cc_library(
         "//llvm:IPO",
         "//llvm:MC",
         "//llvm:MCParser",
-        "//llvm:Option",
         "//llvm:Support",
         "//llvm:Target",
         "//llvm:TargetParser",
@@ -2262,7 +2278,6 @@ cc_binary(
         ":static_analyzer_frontend",
         ":tooling",
         ":tooling_syntax",
-        "//llvm:Option",
         "//llvm:Support",
     ],
 )
@@ -2456,7 +2471,6 @@ cc_library(
         ":index",
         ":install_api",
         ":lex",
-        "//llvm:Option",
         "//llvm:Support",
         "//llvm:TargetParser",
     ],
@@ -2484,7 +2498,6 @@ cc_library(
         ":frontend",
         ":lex",
         ":tooling",
-        "//llvm:Option",
         "//llvm:Support",
     ],
 )
