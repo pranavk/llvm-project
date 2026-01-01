@@ -3919,16 +3919,19 @@ cc_library(
     name = "LTO",
     srcs = glob([
         "lib/LTO/*.cpp",
+        "lib/DTLTO/DTLTO.cpp",
     ]),
     hdrs = glob([
         "include/llvm/LTO/*.h",
         "include/llvm/LTO/legacy/*.h",
+        "include/llvm/DTLTO/DTLTO.h",
     ]) + [
         "include/llvm-c/lto.h",
     ],
     copts = llvm_copts,
     deps = [
         ":Analysis",
+        ":BinaryFormat",
         ":BitReader",
         ":BitWriter",
         ":CGData",
