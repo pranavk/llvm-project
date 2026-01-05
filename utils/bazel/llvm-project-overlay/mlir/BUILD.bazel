@@ -1114,6 +1114,8 @@ cc_library(
     textual_hdrs = [":MLIRBindingsPythonHeaderFiles"],
     deps = [
         ":CAPIIRHeaders",
+        ":CAPIDebugHeaders",
+        ":CAPITransformsHeaders",
         "@pybind11",
         "@rules_python//python/cc:current_py_cc_headers",
     ],
@@ -1127,6 +1129,8 @@ cc_library(
     textual_hdrs = [":MLIRBindingsPythonHeaderFiles"],
     deps = [
         ":CAPIIR",
+        ":CAPIDebug",
+        ":CAPITransforms",
         "@pybind11",
         "@rules_python//python/cc:current_py_cc_headers",
     ],
@@ -1140,6 +1144,8 @@ cc_library(
     textual_hdrs = [":MLIRBindingsPythonHeaderFiles"],
     deps = [
         ":CAPIIRHeaders",
+        ":CAPIDebugHeaders",
+        ":CAPITransformsHeaders",
         "@nanobind",
         "@rules_python//python/cc:current_py_cc_headers",
     ],
@@ -1153,6 +1159,8 @@ cc_library(
     textual_hdrs = [":MLIRBindingsPythonHeaderFiles"],
     deps = [
         ":CAPIIR",
+        ":CAPIDebug",
+        ":CAPITransforms",
         "@nanobind",
         "@rules_python//python/cc:current_py_cc_headers",
     ],
@@ -1301,9 +1309,16 @@ cc_binary(
     ],
 )
 
+genrule(
+    name = "DialectLLVM_fixed_cpp",
+    srcs = ["lib/Bindings/Python/DialectLLVM.cpp"],
+    outs = ["DialectLLVM_fixed.cpp"],
+    cmd = "sed 's/python::mlir::llvm::populateDialectLLVMSubmodule/::mlir::python::MLIR_BINDINGS_PYTHON_DOMAIN::llvm::populateDialectLLVMSubmodule/g' $(SRCS) > $@",
+)
+
 cc_binary(
     name = "_mlirDialectsLLVM.so",
-    srcs = ["lib/Bindings/Python/DialectLLVM.cpp"],
+    srcs = [":DialectLLVM_fixed_cpp"],
     copts = PYBIND11_COPTS,
     features = PYBIND11_FEATURES,
     linkshared = 1,
