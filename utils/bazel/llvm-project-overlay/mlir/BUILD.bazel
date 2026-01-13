@@ -5930,6 +5930,7 @@ cc_library(
     ]),
     includes = ["include"],
     deps = [
+        ":AMDGPUToROCDL",
         ":AMDGPUDialect",
         ":AMDGPUToROCDL",
         ":AMDGPUUtils",
