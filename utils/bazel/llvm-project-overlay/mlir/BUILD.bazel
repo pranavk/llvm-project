@@ -1470,6 +1470,13 @@ td_library(
 )
 
 td_library(
+    name = "AlignmentAttrInterfaceTdFiles",
+    srcs = ["include/mlir/Interfaces/AlignmentAttrInterface.td"],
+    includes = ["include"],
+    deps = [":OpBaseTdFiles"],
+)
+
+td_library(
     name = "BytecodeOpInterfaceTdFiles",
     srcs = ["include/mlir/Bytecode/BytecodeOpInterface.td"],
     includes = ["include"],
@@ -5091,6 +5098,7 @@ cc_library(
         ":Analysis",
         ":ArithDialect",
         ":ArithUtils",
+        ":AlignmentAttrInterface",
         ":BufferizationInterfaces",
         ":BytecodeOpInterface",
         ":ControlFlowInterfaces",
@@ -7925,6 +7933,29 @@ cc_library(
     deps = [
         ":DerivedAttributeOpInterfaceIncGen",
         ":IR",
+    ],
+)
+
+gentbl_cc_library(
+    name = "AlignmentAttrInterfaceIncGen",
+    tbl_outs = {
+        "include/mlir/Interfaces/AlignmentAttrInterface.h.inc": ["-gen-op-interface-decls"],
+        "include/mlir/Interfaces/AlignmentAttrInterface.cpp.inc": ["-gen-op-interface-defs"],
+    },
+    tblgen = ":mlir-tblgen",
+    td_file = "include/mlir/Interfaces/AlignmentAttrInterface.td",
+    deps = [":AlignmentAttrInterfaceTdFiles"],
+)
+
+cc_library(
+    name = "AlignmentAttrInterface",
+    srcs = ["lib/Interfaces/AlignmentAttrInterface.cpp"],
+    hdrs = ["include/mlir/Interfaces/AlignmentAttrInterface.h"],
+    includes = ["include"],
+    deps = [
+        ":AlignmentAttrInterfaceIncGen",
+        ":IR",
+        "//llvm:Support",
     ],
 )
 
@@ -13347,6 +13378,7 @@ cc_library(
     deps = [
         ":AlignmentAttrInterface",
         ":AllocationOpInterface",
+        ":AlignmentAttrInterface",
         ":ArithDialect",
         ":ArithUtils",
         ":BytecodeOpInterface",
