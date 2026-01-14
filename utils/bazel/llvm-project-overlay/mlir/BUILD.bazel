@@ -10282,6 +10282,7 @@ cc_binary(
         ":Support",
         ":TableGen",
         "//llvm:CodeGenTypes",
+        "//llvm:vt_gen",
         "//llvm:Support",
         "//llvm:TableGen",
         "//llvm:TargetParser",
