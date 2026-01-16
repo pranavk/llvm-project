@@ -4969,9 +4969,11 @@ cc_binary(
     deps = [
         ":AllTargetsCodeGens",
         ":BinaryFormat",
+        ":Core",
         ":DebugInfo",
         ":DebugInfoDWARF",
         ":DebugInfoDWARFLowLevel",
+        ":IRReader",
         ":MC",
         ":Object",
         ":Support",
