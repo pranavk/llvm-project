@@ -6622,12 +6622,27 @@ cc_binary(
     ],
 )
 
+cc_library(
+    name = "llvm-ir2vec-utils",
+    testonly = True,
+    srcs = ["tools/llvm-ir2vec/utils/utils.cpp"],
+    hdrs = ["tools/llvm-ir2vec/utils/utils.h"],
+    copts = llvm_copts,
+    strip_include_prefix = "tools/llvm-ir2vec/utils",
+    deps = [
+        ":Analysis",
+        ":CodeGen",
+        ":Core",
+        ":Support",
+        ":Target",
+    ],
+)
+
 cc_binary(
     name = "llvm-ir2vec",
     testonly = True,
     srcs = glob([
         "tools/llvm-ir2vec/*.cpp",
-        "tools/llvm-ir2vec/*.h",
     ]),
     copts = llvm_copts,
     stamp = 0,
@@ -6644,6 +6659,7 @@ cc_binary(
         ":Target",
         ":TargetParser",
         ":config",
+        ":llvm-ir2vec-utils",
     ],
 )
 
