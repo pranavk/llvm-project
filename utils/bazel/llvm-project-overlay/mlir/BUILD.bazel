@@ -1130,7 +1130,6 @@ cc_library(
         ":CAPIDebugHeaders",
         ":CAPIIRHeaders",
         ":CAPITransformsHeaders",
-        "@pybind11",
         "@rules_python//python/cc:current_py_cc_headers",
     ],
 )
