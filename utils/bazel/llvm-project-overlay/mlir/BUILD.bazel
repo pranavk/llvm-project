@@ -1918,6 +1918,35 @@ gentbl_cc_library(
 )
 
 cc_library(
+    name = "EmitCDialectHeaders",
+    hdrs = glob(["include/mlir/Dialect/EmitC/IR/*.h"]),
+    includes = ["include"],
+    deps = [
+        ":BytecodeOpInterface",
+        ":CastInterfaces",
+        ":ControlFlowInterfaces",
+        ":EmitCAttributesIncGen",
+        ":EmitCInterfacesIncGen",
+        ":EmitCOpsIncGen",
+        ":FunctionInterfaces",
+        ":IR",
+        ":SideEffectInterfaces",
+        ":Support",
+        "//llvm:Support",
+    ],
+)
+
+cc_library(
+    name = "EmitCTransformsHeaders",
+    hdrs = ["include/mlir/Dialect/EmitC/Transforms/Transforms.h"],
+    includes = ["include"],
+    deps = [
+        ":EmitCDialectHeaders",
+        ":IR",
+    ],
+)
+
+cc_library(
     name = "TargetCpp",
     srcs = glob([
         "lib/Target/Cpp/*.cpp",
@@ -4172,6 +4201,7 @@ cc_library(
         ":EmitCAttributesIncGen",
         ":EmitCInterfacesIncGen",
         ":EmitCOpsIncGen",
+        ":EmitCTransformsHeaders",
         ":FunctionInterfaces",
         ":IR",
         ":SideEffectInterfaces",
@@ -4187,11 +4217,12 @@ cc_library(
     ]),
     hdrs = glob([
         "include/mlir/Dialect/EmitC/Transforms/*.h",
-    ]),
+    ], exclude = ["include/mlir/Dialect/EmitC/Transforms/Transforms.h"]),
     includes = ["include"],
     deps = [
         ":EmitCDialect",
         ":EmitCPassIncGen",
+        ":EmitCTransformsHeaders",
         ":IR",
         ":Pass",
         ":TransformUtils",
