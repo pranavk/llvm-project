@@ -2643,6 +2643,7 @@ cc_library(
     hdrs = ["include/mlir/Dialect/X86Vector/X86VectorDialect.h"],
     includes = ["include"],
     deps = [
+        ":ArithDialect",
         ":BytecodeOpInterface",
         ":IR",
         ":InferTypeOpInterface",
@@ -2855,6 +2856,7 @@ cc_library(
     ],
     includes = ["include"],
     deps = [
+        ":ArithDialect",
         ":BytecodeOpInterface",
         ":Dialect",
         ":IR",
@@ -3589,6 +3591,7 @@ cc_library(
     hdrs = ["include/mlir/Dialect/NVGPU/IR/NVGPUDialect.h"],
     includes = ["include"],
     deps = [
+        ":ArithDialect",
         ":BytecodeOpInterface",
         ":GPUDialect",
         ":IR",
@@ -3787,6 +3790,7 @@ cc_library(
     hdrs = glob(["include/mlir/Dialect/WasmSSA/IR/*.h"]),
     includes = ["include"],
     deps = [
+        ":ArithDialect",
         ":BytecodeOpInterface",
         ":DialectUtils",
         ":FunctionInterfaces",
@@ -5048,6 +5052,7 @@ cc_library(
     ],
     includes = ["include"],
     deps = [
+        ":ArithDialect",
         ":BytecodeOpInterface",
         ":FuncDialect",
         ":FuncToLLVM",
@@ -5461,6 +5466,7 @@ cc_library(
     hdrs = ["include/mlir/Bytecode/BytecodeWriter.h"],
     includes = ["include"],
     deps = [
+        ":ArithDialect",
         ":BytecodeOpInterface",
         ":IR",
         "//llvm:Support",
@@ -5540,6 +5546,7 @@ cc_library(
     ),
     includes = ["include"],
     deps = [
+        ":ArithDialect",
         ":BytecodeOpInterface",
         ":CallOpInterfaces",
         ":ControlFlowInterfaces",
@@ -6771,6 +6778,7 @@ cc_library(
     ]),
     includes = ["include"],
     deps = [
+        ":ArithDialect",
         ":BytecodeOpInterface",
         ":IR",
         ":InferTypeOpInterface",
@@ -6828,6 +6836,7 @@ cc_library(
     ]),
     includes = ["include"],
     deps = [
+        ":ArithDialect",
         ":BytecodeOpInterface",
         ":FunctionInterfaces",
         ":IR",
@@ -6970,6 +6979,7 @@ cc_library(
     ]),
     includes = ["include"],
     deps = [
+        ":ArithDialect",
         ":BytecodeOpInterface",
         ":DataLayoutInterfaces",
         ":IR",
@@ -10900,6 +10910,7 @@ cc_library(
     ],
     includes = ["include"],
     deps = [
+        ":ArithDialect",
         ":BytecodeOpInterface",
         ":IR",
         ":InferTypeOpInterface",
@@ -11012,6 +11023,7 @@ cc_library(
     hdrs = glob(["include/mlir/Dialect/Index/IR/*.h"]),
     includes = ["include"],
     deps = [
+        ":ArithDialect",
         ":BytecodeOpInterface",
         ":CastInterfaces",
         ":ConvertToLLVMInterface",
@@ -12458,6 +12470,7 @@ cc_library(
     srcs = glob(["lib/Dialect/Transform/PDLExtension/*.cpp"]),
     hdrs = glob(["include/mlir/Dialect/Transform/PDLExtension/*.h"]),
     deps = [
+        ":ArithDialect",
         ":BytecodeOpInterface",
         ":IR",
         ":PDLDialect",
@@ -12545,6 +12558,7 @@ cc_library(
     hdrs = glob(["include/mlir/Dialect/Transform/SMTExtension/*.h"]),
     includes = ["include"],
     deps = [
+        ":ArithDialect",
         ":BytecodeOpInterface",
         ":IR",
         ":SMTDialect",
@@ -12574,6 +12588,7 @@ cc_library(
     srcs = glob(["lib/Dialect/Transform/IRDLExtension/*.cpp"]),
     hdrs = glob(["include/mlir/Dialect/Transform/IRDLExtension/*.h"]),
     deps = [
+        ":ArithDialect",
         ":BytecodeOpInterface",
         ":IR",
         ":IRDLDialect",
@@ -12616,6 +12631,7 @@ cc_library(
     srcs = glob(["lib/Dialect/Transform/DebugExtension/*.cpp"]),
     hdrs = glob(["include/mlir/Dialect/Transform/DebugExtension/*.h"]),
     deps = [
+        ":ArithDialect",
         ":BytecodeOpInterface",
         ":IR",
         ":SideEffectInterfaces",
@@ -12655,6 +12671,7 @@ cc_library(
     srcs = glob(["lib/Dialect/Transform/LoopExtension/*.cpp"]),
     hdrs = glob(["include/mlir/Dialect/Transform/LoopExtension/*.h"]),
     deps = [
+        ":ArithDialect",
         ":BytecodeOpInterface",
         ":IR",
         ":LoopLikeInterface",
@@ -13647,6 +13664,7 @@ cc_library(
     hdrs = glob(["include/mlir/Dialect/MLProgram/IR/*.h"]),
     includes = ["include"],
     deps = [
+        ":ArithDialect",
         ":BytecodeOpInterface",
         ":CallOpInterfaces",
         ":ControlFlowInterfaces",
@@ -13756,6 +13774,7 @@ cc_library(
     hdrs = glob(["include/mlir/Dialect/MPI/IR/*.h"]),
     includes = ["include"],
     deps = [
+        ":ArithDialect",
         ":BytecodeOpInterface",
         ":DLTIDialect",
         ":IR",
