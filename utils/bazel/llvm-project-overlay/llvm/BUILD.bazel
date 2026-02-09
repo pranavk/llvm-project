@@ -501,6 +501,20 @@ cc_library(
 )
 
 cc_library(
+    name = "BinaryFormatHeaders",
+    hdrs = glob([
+        "include/llvm/BinaryFormat/*.h",
+    ]),
+    copts = llvm_copts,
+    includes = ["include"],
+    textual_hdrs = glob([
+        "include/llvm/BinaryFormat/*.def",
+        "include/llvm/BinaryFormat/ELFRelocs/*.def",
+    ]),
+    deps = [":Support"],
+)
+
+cc_library(
     name = "BinaryFormat",
     srcs = glob([
         "lib/BinaryFormat/*.cpp",
@@ -1579,6 +1593,7 @@ cc_library(
         "include/llvm/TargetParser/*.def",
     ]),
     deps = [
+        ":BinaryFormatHeaders",
         ":Support",
         ":config",
     ],
