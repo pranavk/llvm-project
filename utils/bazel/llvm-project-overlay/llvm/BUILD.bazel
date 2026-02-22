@@ -3132,6 +3132,7 @@ llvm_target_lib_list = [lib for lib in [
     {
         "name": "SPIRV",
         "short_name": "SPIRV",
+        "codegen_copts": ["-DSPIRVType=llvm::MachineInstr"],
         "tbl_outs": [
             (
                 ["-gen-asm-writer"],
@@ -3799,7 +3800,7 @@ gentbl_cc_library(
             allow_empty = True,
         ),
         hdrs = ["lib/Target/" + target["name"] + "/" + target["short_name"] + ".h"],
-        copts = llvm_copts,
+        copts = llvm_copts + target.get("codegen_copts", []),
         features = ["-layering_check"],
         strip_include_prefix = "lib/Target/" + target["name"],
         textual_hdrs = glob(
