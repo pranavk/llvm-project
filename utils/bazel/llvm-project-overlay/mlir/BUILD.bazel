@@ -4292,6 +4292,7 @@ cc_library(
         ":AffineToStandard",
         ":ArithAndMathToAPFloat",
         ":ArithToAMDGPU",
+        ":ArithToAPFloat",
         ":ArithToArmSME",
         ":ArithToEmitC",
         ":ArithToLLVM",
@@ -8538,6 +8539,23 @@ cc_library(
         ":IR",
         ":Pass",
         ":TransformUtils",
+    ],
+)
+
+cc_library(
+    name = "ArithToAPFloat",
+    srcs = glob(["lib/Conversion/ArithToAPFloat/*.cpp"]),
+    hdrs = glob(["include/mlir/Conversion/ArithToAPFloat/*.h"]),
+    includes = ["include"],
+    deps = [
+        ":ArithDialect",
+        ":ArithTransforms",
+        ":ConversionPassIncGen",
+        ":FuncDialect",
+        ":FuncUtils",
+        ":IR",
+        ":TransformUtils",
+        "//llvm:Support",
     ],
 )
 
