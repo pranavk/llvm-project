@@ -439,7 +439,9 @@ AArch64Subtarget::ClassifyGlobalReference(const GlobalValue *GV,
                                           const TargetMachine &TM) const {
   // MachO large model always goes via a GOT, simply to get a single 8-byte
   // absolute relocation on all global addresses.
-  if (TM.getCodeModel() == CodeModel::Large && isTargetMachO())
+  // ELF large model with PIC also goes via GOT to support large addresses.
+  if (TM.getCodeModel() == CodeModel::Large &&
+      (isTargetMachO() || TM.isPositionIndependent()))
     return AArch64II::MO_GOT;
 
   // All globals dynamically protected by MTE must have their address tags

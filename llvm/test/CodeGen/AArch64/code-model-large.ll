@@ -22,8 +22,8 @@ define dso_local ptr @global_addr() {
 ; PIC-NEXT:    .type .Lglobal_addr$local,@function
 ; PIC-NEXT:    .cfi_startproc
 ; PIC-NEXT:  // %bb.0:
-; PIC-NEXT:    adrp x0, .Lvar8$local
-; PIC-NEXT:    add x0, x0, :lo12:.Lvar8$local
+; PIC-NEXT:    adrp x0, :got:.Lvar8$local
+; PIC-NEXT:    ldr x0, [x0, :got_lo12:.Lvar8$local]
 ; PIC-NEXT:    ret
   ret ptr @var8
   ; The movz/movk calculation should end up returned directly in x0.
@@ -45,8 +45,9 @@ define dso_local i8 @global_i8() {
 ; PIC-NEXT:    .type .Lglobal_i8$local,@function
 ; PIC-NEXT:    .cfi_startproc
 ; PIC-NEXT:  // %bb.0:
-; PIC-NEXT:    adrp x8, .Lvar8$local
-; PIC-NEXT:    ldrb w0, [x8, :lo12:.Lvar8$local]
+; PIC-NEXT:    adrp x8, :got:.Lvar8$local
+; PIC-NEXT:    ldr x8, [x8, :got_lo12:.Lvar8$local]
+; PIC-NEXT:    ldrb w0, [x8]
 ; PIC-NEXT:    ret
   %val = load i8, ptr @var8
   ret i8 %val
@@ -68,8 +69,9 @@ define dso_local i16 @global_i16() {
 ; PIC-NEXT:    .type .Lglobal_i16$local,@function
 ; PIC-NEXT:    .cfi_startproc
 ; PIC-NEXT:  // %bb.0:
-; PIC-NEXT:    adrp x8, .Lvar16$local
-; PIC-NEXT:    ldrh w0, [x8, :lo12:.Lvar16$local]
+; PIC-NEXT:    adrp x8, :got:.Lvar16$local
+; PIC-NEXT:    ldr x8, [x8, :got_lo12:.Lvar16$local]
+; PIC-NEXT:    ldrh w0, [x8]
 ; PIC-NEXT:    ret
   %val = load i16, ptr @var16
   ret i16 %val
@@ -91,8 +93,9 @@ define dso_local i32 @global_i32() {
 ; PIC-NEXT:    .type .Lglobal_i32$local,@function
 ; PIC-NEXT:    .cfi_startproc
 ; PIC-NEXT:  // %bb.0:
-; PIC-NEXT:    adrp x8, .Lvar32$local
-; PIC-NEXT:    ldr w0, [x8, :lo12:.Lvar32$local]
+; PIC-NEXT:    adrp x8, :got:.Lvar32$local
+; PIC-NEXT:    ldr x8, [x8, :got_lo12:.Lvar32$local]
+; PIC-NEXT:    ldr w0, [x8]
 ; PIC-NEXT:    ret
   %val = load i32, ptr @var32
   ret i32 %val
@@ -114,8 +117,9 @@ define dso_local i64 @global_i64() {
 ; PIC-NEXT:    .type .Lglobal_i64$local,@function
 ; PIC-NEXT:    .cfi_startproc
 ; PIC-NEXT:  // %bb.0:
-; PIC-NEXT:    adrp x8, .Lvar64$local
-; PIC-NEXT:    ldr x0, [x8, :lo12:.Lvar64$local]
+; PIC-NEXT:    adrp x8, :got:.Lvar64$local
+; PIC-NEXT:    ldr x8, [x8, :got_lo12:.Lvar64$local]
+; PIC-NEXT:    ldr x0, [x8]
 ; PIC-NEXT:    ret
   %val = load i64, ptr @var64
   ret i64 %val
