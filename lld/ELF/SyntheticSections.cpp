@@ -577,6 +577,9 @@ void GotSection::finalizeContents() {
 bool GotSection::isNeeded() const {
   // Needed if the GOT symbol is used or the number of entries is more than just
   // the header. A GOT with just the header may not be needed.
+  // For AArch64, we might need GOT-based range extension thunks under PIC.
+  if (ctx.arg.emachine == EM_AARCH64 && ctx.arg.picThunk)
+    return true;
   return hasGotOffRel || numEntries > ctx.target->gotHeaderEntriesNum;
 }
 
