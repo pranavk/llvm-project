@@ -143,6 +143,8 @@ void MCAsmInfoELF::printSwitchToSection(const MCSection &Section,
   } else if (T.isAArch64()) {
     if (Sec.Flags & ELF::SHF_AARCH64_PURECODE)
       OS << 'y';
+    if (Sec.Flags & ELF::SHF_AARCH64_LARGE)
+      OS << 'l';
   } else if (Arch == Triple::hexagon) {
     if (Sec.Flags & ELF::SHF_HEX_GPREL)
       OS << 's';

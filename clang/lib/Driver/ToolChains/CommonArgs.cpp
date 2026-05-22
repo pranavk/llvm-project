@@ -3204,10 +3204,6 @@ void tools::addMCModel(const Driver &D, const llvm::opt::ArgList &Args,
       CM = "large";
     if (Triple.isAArch64(64)) {
       Ok = CM == "tiny" || CM == "small" || CM == "large";
-      if (CM == "large" && !Triple.isOSBinFormatMachO() &&
-          RelocationModel != llvm::Reloc::Static)
-        D.Diag(diag::err_drv_argument_only_allowed_with)
-            << A->getAsString(Args) << "-fno-pic";
     } else if (Triple.isLoongArch()) {
       if (CM == "extreme" &&
           Args.hasFlagNoClaim(options::OPT_fplt, options::OPT_fno_plt, false))
@@ -3258,7 +3254,7 @@ void tools::addMCModel(const Driver &D, const llvm::opt::ArgList &Args,
     }
   }
 
-  if (Triple.getArch() == llvm::Triple::x86_64) {
+  if (Triple.getArch() == llvm::Triple::x86_64 || Triple.isAArch64()) {
     bool IsMediumCM = false;
     bool IsLargeCM = false;
     if (Arg *A = Args.getLastArg(options::OPT_mcmodel_EQ)) {

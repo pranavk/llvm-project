@@ -795,8 +795,12 @@ getGlobalObjectInfo(const GlobalObject *GO, const TargetMachine &TM,
     Group = C->getName();
     IsComdat = C->getSelectionKind() == Comdat::Any;
   }
-  if (TM.isLargeGlobalValue(GO))
-    Flags |= ELF::SHF_X86_64_LARGE;
+  if (TM.isLargeGlobalValue(GO)) {
+    if (TM.getTargetTriple().getArch() == Triple::x86_64)
+      Flags |= ELF::SHF_X86_64_LARGE;
+    else if (TM.getTargetTriple().isAArch64())
+      Flags |= ELF::SHF_AARCH64_LARGE;
+  }
 
   unsigned Type, EntrySize;
   if (MDNode *MD = GO->getMetadata(LLVMContext::MD_elf_section_properties)) {

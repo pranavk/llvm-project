@@ -54,8 +54,10 @@ TargetMachine::createMCStreamer(raw_pwrite_stream &Out,
 }
 
 bool TargetMachine::isLargeGlobalValue(const GlobalValue *GVal) const {
-  if (getTargetTriple().getArch() != Triple::x86_64)
+  if (getTargetTriple().getArch() != Triple::x86_64 &&
+      !getTargetTriple().isAArch64())
     return false;
+
 
   // Remaining logic below is ELF-specific. For other object file formats where
   // the large code model is mostly used for JIT compilation, just look at the

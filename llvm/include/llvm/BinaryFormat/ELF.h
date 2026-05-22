@@ -1346,7 +1346,10 @@ enum : unsigned {
   SHF_ARM_PURECODE = 0x20000000,
 
   // Section contains only program instructions and no program data.
-  SHF_AARCH64_PURECODE = 0x20000000
+  SHF_AARCH64_PURECODE = 0x20000000,
+
+  // Section contains large constants/variables.
+  SHF_AARCH64_LARGE = 0x10000000
 };
 
 // Section Group Flags
