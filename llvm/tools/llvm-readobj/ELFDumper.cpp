@@ -1385,8 +1385,11 @@ constexpr EnumStringDef<unsigned, 2> ElfXCoreSectionFlagsDefs[] = {
 constexpr auto ElfXCoreSectionFlags =
     BUILD_ENUM_STRINGS(ElfXCoreSectionFlagsDefs);
 
-constexpr EnumStringDef<unsigned, 2> ElfAArch64SectionFlagsDefs[] = {
-    ENUM_ENT(SHF_AARCH64_PURECODE, "y")};
+const EnumEntry<unsigned> ElfAArch64SectionFlags[] = {
+  ENUM_ENT(SHF_AARCH64_PURECODE, "y"),
+  ENUM_ENT(SHF_AARCH64_LARGE, "l")
+};
+
 constexpr auto ElfAArch64SectionFlags =
     BUILD_ENUM_STRINGS(ElfAArch64SectionFlagsDefs);
 
