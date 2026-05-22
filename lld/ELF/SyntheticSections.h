@@ -121,6 +121,7 @@ public:
 
   void addConstant(const Relocation &r) { addReloc(r); }
   void addEntry(const Symbol &sym);
+  void addEntryLater(Symbol &sym);
   void addAuthEntry(const Symbol &sym);
   bool addTlsDescEntry(const Symbol &sym);
   void addTlsDescAuthEntry();

@@ -28,6 +28,7 @@
 #include "Symbols.h"
 #include "SyntheticSections.h"
 #include "Target.h"
+#include "Relocations.h"
 #include "lld/Common/CommonLinkerContext.h"
 #include "llvm/BinaryFormat/ELF.h"
 #include "llvm/Support/Casting.h"
@@ -108,7 +109,10 @@ class AArch64ADRPThunk final : public AArch64Thunk {
 public:
   AArch64ADRPThunk(Ctx &ctx, Symbol &dest, int64_t addend,
                    bool mayNeedLandingPad)
-      : AArch64Thunk(ctx, dest, addend, mayNeedLandingPad) {}
+      : AArch64Thunk(ctx, dest, addend, mayNeedLandingPad) {
+    if (!dest.isInGot(ctx))
+      addGotEntryLater(ctx, dest);
+  }
   uint32_t size() override { return getMayUseShortThunk() ? 4 : 12; }
   void addSymbols(ThunkSection &isec) override;
 
@@ -729,11 +733,6 @@ void AArch64ABSXOLongThunk::addSymbols(ThunkSection &sec) {
 // code so it is safe to use this for position independent thunks without
 // worrying about the destination being more than 4Gb away.
 void AArch64ADRPThunk::writeLong(uint8_t *buf) {
-  const uint8_t data[] = {
-      0x10, 0x00, 0x00, 0x90, // adrp x16, Dest R_AARCH64_ADR_PREL_PG_HI21(Dest)
-      0x10, 0x02, 0x00, 0x91, // add  x16, x16, R_AARCH64_ADD_ABS_LO12_NC(Dest)
-      0x00, 0x02, 0x1f, 0xd6, // br   x16
-  };
   // if mayNeedLandingPad is true then destination is an
   // AArch64BTILandingPadThunk that defines landingPad.
   assert(!mayNeedLandingPad || landingPad != nullptr);
@@ -741,10 +740,31 @@ void AArch64ADRPThunk::writeLong(uint8_t *buf) {
                    ? landingPad->getVA(ctx, 0)
                    : getAArch64ThunkDestVA(ctx, destination, addend);
   uint64_t p = getThunkTargetSym()->getVA(ctx);
-  memcpy(buf, data, sizeof(data));
-  ctx.target->relocateNoSym(buf, R_AARCH64_ADR_PREL_PG_HI21,
-                            getAArch64Page(s) - getAArch64Page(p));
-  ctx.target->relocateNoSym(buf + 4, R_AARCH64_ADD_ABS_LO12_NC, s);
+
+  int64_t pageDelta = getAArch64Page(s) - getAArch64Page(p);
+  if (pageDelta >= -4294967296LL && pageDelta < 4294967296LL) {
+    // Traditional ADRP + ADD thunk (range +/- 4GiB)
+    const uint8_t data[] = {
+        0x10, 0x00, 0x00, 0x90, // adrp x16, Dest R_AARCH64_ADR_PREL_PG_HI21(Dest)
+        0x10, 0x02, 0x00, 0x91, // add  x16, x16, R_AARCH64_ADD_ABS_LO12_NC(Dest)
+        0x00, 0x02, 0x1f, 0xd6, // br   x16
+    };
+    memcpy(buf, data, sizeof(data));
+    ctx.target->relocateNoSym(buf, R_AARCH64_ADR_PREL_PG_HI21, pageDelta);
+    ctx.target->relocateNoSym(buf + 4, R_AARCH64_ADD_ABS_LO12_NC, s);
+  } else {
+    // GOT-based thunk (range unlimited)
+    const uint8_t data[] = {
+        0x10, 0x00, 0x00, 0x90, // adrp x16, :got:Dest R_AARCH64_ADR_GOT_PAGE(Dest)
+        0x10, 0x02, 0x40, 0xf9, // ldr  x16, [x16, #:got_lo12:Dest] R_AARCH64_LD64_GOT_LO12_NC(Dest)
+        0x00, 0x02, 0x1f, 0xd6, // br   x16
+    };
+    memcpy(buf, data, sizeof(data));
+    uint64_t gotEntryAddr = destination.getGotVA(ctx);
+    ctx.target->relocateNoSym(buf, R_AARCH64_ADR_GOT_PAGE,
+                              getAArch64Page(gotEntryAddr) - getAArch64Page(p));
+    ctx.target->relocateNoSym(buf + 4, R_AARCH64_LD64_GOT_LO12_NC, gotEntryAddr);
+  }
 }
 
 void AArch64ADRPThunk::addSymbols(ThunkSection &isec) {

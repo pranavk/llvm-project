@@ -778,6 +778,23 @@ void elf::addGotEntry(Ctx &ctx, Symbol &sym) {
                      ctx.target->symbolicRel);
 }
 
+void elf::addGotEntryLater(Ctx &ctx, Symbol &sym) {
+  ctx.in.got->addEntryLater(sym);
+  uint64_t off = sym.getGotOffset(ctx);
+
+  if (sym.isPreemptible) {
+    ctx.mainPart->relaDyn->addReloc(
+        {ctx.target->gotRel, ctx.in.got.get(), off, true, sym, 0, R_ADDEND});
+    return;
+  }
+
+  if (!ctx.arg.isPic || isAbsolute(sym))
+    ctx.in.got->addConstant({R_ABS, ctx.target->symbolicRel, off, 0, &sym});
+  else
+    addRelativeReloc(ctx, *ctx.in.got, off, sym, 0, R_ABS,
+                     ctx.target->symbolicRel);
+}
+
 static void addGotAuthEntry(Ctx &ctx, Symbol &sym) {
   ctx.in.got->addEntry(sym);
   ctx.in.got->addAuthEntry(sym);

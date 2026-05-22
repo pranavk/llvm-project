@@ -506,6 +506,14 @@ void GotSection::addEntry(const Symbol &sym) {
   ctx.symAux.back().gotIdx = numEntries++;
 }
 
+void GotSection::addEntryLater(Symbol &sym) {
+  if (sym.auxIdx == 0)
+    sym.allocateAux(ctx);
+  if (sym.getGotIdx(ctx) == uint32_t(-1)) {
+    ctx.symAux[sym.auxIdx].gotIdx = numEntries++;
+  }
+}
+
 void GotSection::addAuthEntry(const Symbol &sym) {
   authEntries.push_back(
       {(numEntries - 1) * ctx.target->gotEntrySize, sym.isFunc()});
