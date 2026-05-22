@@ -8,11 +8,7 @@
 ; RUN: llc -mtriple=arm64-none-linux-gnu -global-isel -verify-machineinstrs -code-model=tiny < %s | FileCheck %s --check-prefix=CHECK-TINY
 ; RUN: llc -mtriple=arm64-none-linux-gnu -global-isel -filetype=obj < %s -code-model=tiny | llvm-objdump -r - | FileCheck --check-prefix=CHECK-TINY-RELOC %s
 
-; FIXME: We currently error for the large code model
-; RUN: not --crash llc -mtriple=arm64-none-linux-gnu -verify-machineinstrs -show-mc-encoding -code-model=large < %s 2>&1 | FileCheck %s --check-prefix=CHECK-LARGE
-; RUN: not --crash llc -mtriple=arm64-none-linux-gnu -global-isel -verify-machineinstrs -code-model=large < %s 2>&1 | FileCheck %s --check-prefix=CHECK-LARGE
-
-; CHECK-LARGE: ELF TLS only supported in small memory model
+; RUN: llc -mtriple=arm64-none-linux-gnu -verify-machineinstrs -show-mc-encoding -code-model=large < %s | FileCheck %s
 
 @initial_exec_var = external thread_local(initialexec) global i32
 

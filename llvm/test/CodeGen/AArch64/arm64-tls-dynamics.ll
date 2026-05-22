@@ -16,11 +16,7 @@
 ; RUN: llc -mtriple=arm64-none-linux-gnu -relocation-model=pic -aarch64-elf-ldtls-generation=1 -code-model=tiny -verify-machineinstrs < %s | FileCheck %s
 ; RUN: llc -mtriple=arm64-none-linux-gnu -global-isel -relocation-model=pic -aarch64-elf-ldtls-generation=1 -code-model=tiny -verify-machineinstrs < %s | FileCheck %s
 
-; FIXME: We currently error for the large code model
-; RUN: not --crash llc -mtriple=arm64-none-linux-gnu -relocation-model=pic -aarch64-elf-ldtls-generation=1 -code-model=large -verify-machineinstrs < %s 2>&1 | FileCheck %s --check-prefix=CHECK-LARGE
-; RUN: not --crash llc -mtriple=arm64-none-linux-gnu -global-isel -relocation-model=pic -aarch64-elf-ldtls-generation=1 -code-model=large -verify-machineinstrs < %s 2>&1 | FileCheck %s --check-prefix=CHECK-LARGE
-
-; CHECK-LARGE: ELF TLS only supported in small memory model
+; RUN: llc -mtriple=arm64-none-linux-gnu -relocation-model=pic -aarch64-elf-ldtls-generation=1 -code-model=large -verify-machineinstrs < %s | FileCheck %s
 
 @general_dynamic_var = external thread_local global i32
 
