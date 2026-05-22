@@ -20,7 +20,7 @@ low_target:
 
 // CHECK: <__AArch64ADRPThunk_high_target>:
 // CHECK-NEXT:        8:       adrp    x16, 0x0
-// CHECK-NEXT:                 ldr     x16, [x16]
+// CHECK-NEXT:                 ldr     x16, [x16, #0xd8]
 // CHECK-NEXT:                 br      x16
 
  .section .text_high, "ax", %progbits
@@ -31,10 +31,11 @@ high_target:
 
 //--- lds
 PHDRS {
-  low PT_LOAD FLAGS(0x1 | 0x4);
+  low PT_LOAD FLAGS(0x1 | 0x4 | 0x2);
   high PT_LOAD FLAGS(0x1 | 0x4);
 }
 SECTIONS {
   .text_low : { *(.text_low) } :low
+  .got : { *(.got) } :low
   .text_high 0x100000000 : { *(.text_high) } :high
 }
