@@ -149,6 +149,7 @@ bool maybeReportUndefined(Ctx &, Undefined &sym, InputSectionBase &sec,
                           uint64_t offset);
 void postScanRelocations(Ctx &ctx);
 void addGotEntry(Ctx &ctx, Symbol &sym);
+void addGotEntryLater(Ctx &ctx, Symbol &sym);
 
 bool isAbsolute(const Symbol &sym);
 
