@@ -724,9 +724,15 @@ LinkerScript::createInputSectionList(OutputSection &outCmd) {
   return ret;
 }
 
+static OutputDesc *createSection(Ctx &ctx, InputSectionBase *isec,
+                                 StringRef outsecName);
+static OutputDesc *createGotPartitionSection(Ctx &ctx, OutputSection *parentSec,
+                                             uint32_t index, bool isLarge);
+
 // Create output sections described by SECTIONS commands.
 void LinkerScript::processSectionCommands() {
-  auto process = [this](OutputSection *osec) {
+  DenseMap<OutputSection *, std::vector<SectionCommand *>> splitsMap;
+  auto process = [&, this](OutputSection *osec) {
     SmallVector<InputSectionBase *, 0> v = createInputSectionList(*osec);
 
     // The output section name `/DISCARD/' is special.
@@ -762,6 +768,60 @@ void LinkerScript::processSectionCommands() {
         s->addralign = subalign;
     }
 
+    bool hasLargeExec =
+        ctx.arg.emachine == EM_X86_64 &&
+        llvm::any_of(v, [](InputSectionBase *s) {
+          return (s->flags & SHF_EXECINSTR) && (s->flags & SHF_X86_64_LARGE);
+        });
+
+    if (hasLargeExec) {
+      uint64_t spacing = ctx.arg.gotPartitionThreshold * 3 / 4;
+      osec->commands.clear();
+      OutputSection *currentOsec = osec;
+      auto *currentIsd = make<InputSectionDescription>("");
+      currentOsec->commands.push_back(currentIsd);
+      uint64_t currentSize = 0;
+      uint32_t splitIndex = 1;
+      TinyPtrVector<OutputSection *> splits;
+      splits.push_back(osec);
+      std::vector<SectionCommand *> &osecSplits = splitsMap[osec];
+
+      for (InputSectionBase *s : v) {
+        if (currentSize > 0 && currentSize + s->getSize() > spacing) {
+          currentSize = 0;
+          StringRef newName = ctx.saver.save(osec->name + "." + Twine(splitIndex));
+          OutputDesc *newOsd = ctx.script->createOutputSection(newName, "<internal>");
+          OutputSection *newSec = &newOsd->osec;
+          newSec->alignExpr = splits[0]->alignExpr;
+          newSec->memoryRegionName = splits[0]->memoryRegionName;
+          newSec->lmaRegionName = splits[0]->lmaRegionName;
+          newSec->phdrs = splits[0]->phdrs;
+          newSec->partition = 1;
+          OutputDesc *gotPart = createGotPartitionSection(ctx, osec, splitIndex - 1, true);
+
+          osecSplits.push_back(gotPart);
+          osecSplits.push_back(newOsd);
+
+          currentOsec = newSec;
+          currentIsd = make<InputSectionDescription>("");
+          currentOsec->commands.push_back(currentIsd);
+          splits.push_back(newSec);
+          splitIndex++;
+        }
+        currentIsd->sectionBases.push_back(s);
+        s->parent = currentOsec;
+        currentSize = alignToPowerOf2(currentSize, s->addralign);
+        currentSize += s->getSize();
+      }
+      // Always insert a partition if we didn't split.
+      if (splitIndex == 1) {
+        OutputDesc *gotPart = createGotPartitionSection(ctx, osec, 0, true);
+        osecSplits.push_back(gotPart);
+      }
+      for (OutputSection *split : splits)
+        ctx.splitParentMap[split] = osec;
+    }
+
     // Mark the output section live, like OutputSection::recordSection().
     osec->partition = 1;
     return true;
@@ -780,31 +840,46 @@ void LinkerScript::processSectionCommands() {
         !map.try_emplace(CachedHashStringRef(osec->name), osd).second)
       Warn(ctx) << "OVERWRITE_SECTIONS specifies duplicate " << osec->name;
   }
-  for (SectionCommand *&base : sectionCommands) {
+  SmallVector<SectionCommand *, 0> processedCmds;
+  processedCmds.reserve(sectionCommands.size());
+
+  for (SectionCommand *base : sectionCommands) {
     if (auto *osd = dyn_cast<OutputDesc>(base)) {
       OutputSection *osec = &osd->osec;
       if (OutputDesc *overwrite = map.lookup(CachedHashStringRef(osec->name))) {
         Log(ctx) << overwrite->osec.location << " overwrites " << osec->name;
         overwrite->osec.sectionIndex = i++;
-        base = overwrite;
+        processedCmds.push_back(overwrite);
       } else if (process(osec)) {
         osec->sectionIndex = i++;
-      }
-    } else if (auto *sc = dyn_cast<SectionClassDesc>(base)) {
-      for (InputSectionDescription *isd : sc->sc.commands) {
-        isd->sectionBases =
-            computeInputSections(isd, ctx.inputSections, sc->sc);
-        for (InputSectionBase *s : isd->sectionBases) {
-          // A section class containing a section with different parent isn't
-          // necessarily an error due to --enable-non-contiguous-regions. Such
-          // sections all become potential spills when the class is referenced.
-          if (!s->parent)
-            s->parent = &sc->sc;
+        processedCmds.push_back(base);
+
+        auto it = splitsMap.find(osec);
+        if (it != splitsMap.end()) {
+          for (SectionCommand *splitCmd : it->second) {
+            processedCmds.push_back(splitCmd);
+            if (auto *splitOsd = dyn_cast<OutputDesc>(splitCmd)) {
+              splitOsd->osec.sectionIndex = i++;
+            }
+          }
         }
       }
-      sc->sc.assigned = true;
+    } else {
+      if (auto *sc = dyn_cast<SectionClassDesc>(base)) {
+        for (InputSectionDescription *isd : sc->sc.commands) {
+          isd->sectionBases =
+              computeInputSections(isd, ctx.inputSections, sc->sc);
+          for (InputSectionBase *s : isd->sectionBases) {
+            if (!s->parent)
+              s->parent = &sc->sc;
+          }
+        }
+        sc->sc.assigned = true;
+      }
+      processedCmds.push_back(base);
     }
   }
+  sectionCommands = std::move(processedCmds);
 
   // Check that input sections cannot spill into or out of INSERT,
   // since the semantics are nebulous. This is also true for OVERWRITE_SECTIONS,
@@ -901,8 +976,28 @@ static OutputDesc *createSection(Ctx &ctx, InputSectionBase *isec,
   return osd;
 }
 
+
+
+static OutputDesc *createGotPartitionSection(Ctx &ctx, OutputSection *parentSec,
+                                             uint32_t index, bool isLarge) {
+  StringRef parentName = parentSec->name;
+  StringRef ltextName =
+      parentName.starts_with(".") ? parentName.drop_front(1) : parentName;
+  OutputDesc *osd = ctx.script->createOutputSection(
+      ctx.saver.save(".got." + ltextName + "." + Twine(index)), "<internal>");
+  osd->osec.type = SHT_PROGBITS;
+  osd->osec.flags = SHF_ALLOC | SHF_WRITE;
+  if (isLarge)
+    osd->osec.flags |= SHF_X86_64_LARGE;
+  osd->osec.addralign = 8;
+
+  ctx.gotPartitionOutputSections.push_back(&osd->osec);
+  ctx.gotPartitionParentMap[&osd->osec] = parentSec;
+  return osd;
+}
+
 static OutputDesc *addInputSec(Ctx &ctx,
-                               StringMap<TinyPtrVector<OutputSection *>> &map,
+                               StringMap<TinyPtrVector<OutputDesc *>> &map,
                                InputSectionBase *isec, StringRef outsecName) {
   // Sections with SHT_GROUP or SHF_GROUP attributes reach here only when the -r
   // option is given. A section with SHT_GROUP defines a "section group", and
@@ -976,10 +1071,22 @@ static OutputDesc *addInputSec(Ctx &ctx,
   //
   // Given the above issues, we instead merge sections by name and error on
   // incompatible types and flags.
-  TinyPtrVector<OutputSection *> &v = map[outsecName];
-  for (OutputSection *sec : v) {
+  TinyPtrVector<OutputDesc *> &v = map[outsecName];
+  for (OutputDesc *osd : v) {
+    OutputSection *sec = &osd->osec;
     if (sec->partition != isec->partition)
       continue;
+
+    // If GOT partitioning is enabled, and this is a executable section (like
+    // .text), and adding this input section would make the output section
+    // larger than the spacing, do not merge it. Force creation of a new output
+    // section.
+    if (ctx.arg.emachine == EM_X86_64 && (isec->flags & SHF_EXECINSTR) &&
+        (isec->flags & SHF_X86_64_LARGE)) {
+      uint64_t spacing = ctx.arg.gotPartitionThreshold * 3 / 4;
+      if (sec->accumulatedSize + isec->getSize() > spacing)
+        continue;
+    }
 
     if (ctx.arg.relocatable && (isec->flags & SHF_LINK_ORDER)) {
       // Merging two SHF_LINK_ORDER sections with different sh_link fields will
@@ -1000,14 +1107,19 @@ static OutputDesc *addInputSec(Ctx &ctx,
     return nullptr;
   }
 
-  OutputDesc *osd = createSection(ctx, isec, outsecName);
-  v.push_back(&osd->osec);
+  StringRef name = outsecName;
+  if (ctx.arg.emachine == EM_X86_64 && (isec->flags & SHF_EXECINSTR) &&
+      (isec->flags & SHF_X86_64_LARGE) && !v.empty()) {
+    name = ctx.saver.save(outsecName + "." + Twine(v.size()));
+  }
+  OutputDesc *osd = createSection(ctx, isec, name);
+  v.push_back(osd);
   return osd;
 }
 
 // Add sections that didn't match any sections command.
 void LinkerScript::addOrphanSections() {
-  StringMap<TinyPtrVector<OutputSection *>> map;
+  StringMap<TinyPtrVector<OutputDesc *>> map;
   SmallVector<OutputDesc *, 0> v;
 
   auto add = [&](InputSectionBase *s, StringRef name = {}) {
@@ -1021,8 +1133,17 @@ void LinkerScript::addOrphanSections() {
       } else if (OutputSection *sec = findByName(sectionCommands, name)) {
         sec->recordSection(s);
       } else {
-        if (OutputDesc *osd = addInputSec(ctx, map, s, name))
+        size_t oldSize = map[name].size();
+        if (OutputDesc *osd = addInputSec(ctx, map, s, name)) {
+          if (oldSize > 0 && map[name].size() > oldSize &&
+              ctx.arg.emachine == EM_X86_64 && (s->flags & SHF_EXECINSTR) &&
+              (s->flags & SHF_X86_64_LARGE)) {
+            OutputDesc *gotPart = createGotPartitionSection(
+                ctx, &map[name][0]->osec, map[name].size() - 2, true);
+            v.push_back(gotPart);
+          }
           v.push_back(osd);
+        }
         assert(isa<MergeInputSection>(s) ||
                s->getOutputSection()->sectionIndex == UINT32_MAX);
       }
@@ -1076,6 +1197,46 @@ void LinkerScript::addOrphanSections() {
   }
   // Keep just InputSection.
   ctx.inputSections.resize(n);
+
+  // Always ensure there is at least one partition at the end of the last split.
+  for (auto &it : map) {
+    TinyPtrVector<OutputDesc *> &sections = it.second;
+    if (sections.empty())
+      continue;
+    OutputDesc *firstOsd = sections[0];
+    InputSectionBase *firstIsec = nullptr;
+    for (SectionCommand *cmd : firstOsd->osec.commands) {
+      if (auto *isd = dyn_cast<InputSectionDescription>(cmd)) {
+        if (!isd->sectionBases.empty()) {
+          firstIsec = isd->sectionBases[0];
+          break;
+        }
+      }
+    }
+    uint64_t flags = firstIsec ? firstIsec->flags : 0;
+    if (ctx.arg.emachine == EM_X86_64 && (flags & SHF_EXECINSTR) &&
+        (flags & SHF_X86_64_LARGE)) {
+      size_t numSplits = sections.size();
+      if (numSplits == 1) {
+        OutputDesc *gotPart = createGotPartitionSection(ctx, &firstOsd->osec, 0, true);
+        gotPart->osec.alignExpr = firstOsd->osec.alignExpr;
+
+        OutputDesc *lastOsd = sections.back();
+        auto pos = llvm::find(v, lastOsd);
+        assert(pos != v.end());
+        v.insert(pos + 1, gotPart);
+      }
+    }
+  }
+
+  for (auto &it : map) {
+    TinyPtrVector<OutputDesc *> &sections = it.second;
+    if (sections.empty())
+      continue;
+    OutputSection *parent = &sections[0]->osec;
+    for (OutputDesc *osd : sections)
+      ctx.splitParentMap[&osd->osec] = parent;
+  }
 
   // If no SECTIONS command was given, we should insert sections commands
   // before others, so that we can handle scripts which refers them,
@@ -1333,6 +1494,11 @@ bool LinkerScript::assignOffsets(OutputSection *sec) {
 static bool isDiscardable(const OutputSection &sec) {
   if (sec.name == "/DISCARD/")
     return true;
+
+  // Do not discard GOT partition sections, as they will be populated during
+  // relaxation.
+  if (sec.name.starts_with(".got.") && sec.name != ".got.plt")
+    return false;
 
   // We do not want to remove OutputSections with expressions that reference
   // symbols even if the OutputSection is empty. We want to ensure that the

@@ -781,6 +781,27 @@ void elf::addGotEntry(Ctx &ctx, Symbol &sym) {
                      ctx.target->symbolicRel);
 }
 
+uint64_t GotPartitionSection::addEntry(Symbol &sym) {
+  auto it = entryMap.find(&sym);
+  if (it != entryMap.end())
+    return it->second;
+
+  uint64_t off = numEntries * ctx.target->gotEntrySize;
+  entryMap[&sym] = off;
+  numEntries++;
+
+  if (sym.isPreemptible) {
+    ctx.in.relaDyn->addReloc(
+        {ctx.target->gotRel, this, off, true, sym, 0, R_ADDEND});
+  } else {
+    if (!ctx.arg.isPic || isAbsolute(sym))
+      addConstant({R_ABS, ctx.target->symbolicRel, off, 0, &sym});
+    else
+      addRelativeReloc(ctx, *this, off, sym, 0, R_ABS, ctx.target->symbolicRel);
+  }
+  return off;
+}
+
 static void addGotAuthEntry(Ctx &ctx, Symbol &sym) {
   ctx.in.got->addEntry(sym);
   ctx.in.got->addAuthEntry(sym);

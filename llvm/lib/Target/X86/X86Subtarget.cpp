@@ -123,6 +123,12 @@ X86Subtarget::classifyLocalReference(const GlobalValue *GV) const {
 
 unsigned char X86Subtarget::classifyGlobalReference(const GlobalValue *GV,
                                                     const Module &M) const {
+  if (is64Bit() && TM.getCodeModel() == CodeModel::Large && isTargetELF()) {
+    if (AllowTaggedGlobals && GV && !isa<Function>(GV))
+      return X86II::MO_GOTPCREL_NORELAX;
+    return X86II::MO_GOTPCREL;
+  }
+
   // The static large model never uses stubs.
   if (TM.getCodeModel() == CodeModel::Large && !isPositionIndependent())
     return X86II::MO_NO_FLAG;
@@ -190,6 +196,9 @@ X86Subtarget::classifyGlobalFunctionReference(const GlobalValue *GV) const {
 unsigned char
 X86Subtarget::classifyGlobalFunctionReference(const GlobalValue *GV,
                                               const Module &M) const {
+  if (is64Bit() && TM.getCodeModel() == CodeModel::Large && isTargetELF())
+    return X86II::MO_GOTPCREL;
+
   if (TM.shouldAssumeDSOLocal(GV))
     return X86II::MO_NO_FLAG;
 

@@ -6,6 +6,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "LinkerScript.h"
 #include "OutputSections.h"
 #include "RelocScan.h"
 #include "Relocations.h"
@@ -13,6 +14,7 @@
 #include "SyntheticSections.h"
 #include "Target.h"
 #include "TargetImpl.h"
+#include "llvm/ADT/DenseMap.h"
 #include "llvm/BinaryFormat/ELF.h"
 #include "llvm/Support/Endian.h"
 #include "llvm/Support/MathExtras.h"
@@ -505,6 +507,8 @@ void X86_64::relaxCFIJumpTables() const {
 }
 
 bool X86_64::relaxOnce(int pass) const {
+  const int64_t threshold = ctx.arg.gotPartitionThreshold;
+
   uint64_t minVA = UINT64_MAX, maxVA = 0;
   for (OutputSection *osec : ctx.outputSections) {
     if (!(osec->flags & SHF_ALLOC))
@@ -515,36 +519,106 @@ bool X86_64::relaxOnce(int pass) const {
   // If the max VA is under 2^31, GOTPCRELX relocations cannot overflow. In
   // -pie/-shared, the condition can be relaxed to test the max VA difference as
   // there is no R_RELAX_GOT_PC_NOPIC.
-  if (isUInt<31>(maxVA) || (isUInt<31>(maxVA - minVA) && ctx.arg.isPic))
+  if (maxVA < (uint64_t)threshold ||
+      ((maxVA - minVA) < (uint64_t)threshold && ctx.arg.isPic))
     return false;
 
   SmallVector<InputSection *, 0> storage;
   bool changed = false;
+
   for (OutputSection *osec : ctx.outputSections) {
     if (!(osec->flags & SHF_EXECINSTR))
       continue;
-    for (InputSection *sec : getInputSections(*osec, storage)) {
-      for (Relocation &rel : sec->relocs()) {
-        if (rel.expr != R_RELAX_GOT_PC && rel.expr != R_RELAX_GOT_PC_NOPIC)
+    for (SectionCommand *cmd : osec->commands) {
+      auto *isd = dyn_cast<InputSectionDescription>(cmd);
+      if (!isd)
+        continue;
+      for (InputSection *sec : isd->sections) {
+        if (isa<SyntheticSection>(sec))
           continue;
-        assert(rel.addend == -4);
 
-        Relocation rel1 = rel;
-        rel1.addend = rel.expr == R_RELAX_GOT_PC_NOPIC ? 0 : -4;
-        uint64_t v = sec->getRelocTargetVA(ctx, rel1,
-                                           sec->getOutputSection()->addr +
-                                               sec->outSecOff + rel.offset);
-        if (isInt<32>(v))
-          continue;
-        if (rel.sym->auxIdx == 0) {
-          rel.sym->allocateAux(ctx);
-          addGotEntry(ctx, *rel.sym);
-          changed = true;
+        for (Relocation &rel : sec->relocs()) {
+          if (rel.expr == R_RELAX_GOT_PC || rel.expr == R_RELAX_GOT_PC_NOPIC) {
+            assert(rel.addend == -4);
+            Relocation rel1 = rel;
+            rel1.addend = rel.expr == R_RELAX_GOT_PC_NOPIC ? 0 : -4;
+            uint64_t v = sec->getRelocTargetVA(ctx, rel1,
+                                               sec->getOutputSection()->addr +
+                                                   sec->outSecOff + rel.offset);
+            bool inRange = false;
+            if (rel.expr == R_RELAX_GOT_PC_NOPIC) {
+              inRange = isInt<32>(v);
+            } else {
+              int64_t dist = (int64_t)v;
+              inRange = dist >= -threshold && dist < threshold;
+            }
+
+            if (!inRange) {
+              if (rel.sym->auxIdx == 0) {
+                rel.sym->allocateAux(ctx);
+                addGotEntry(ctx, *rel.sym);
+                changed = true;
+              }
+              rel.expr = R_GOT_PC;
+            }
+          }
+
+          if (rel.expr == R_GOT_PC) {
+            uint64_t g = rel.sym->getGotVA(ctx);
+            uint64_t p = osec->addr + sec->outSecOff + rel.offset;
+            int64_t dist = g - p;
+
+            if (dist < -threshold || dist >= threshold) {
+              GotPartitionSection *gp = nullptr;
+              int64_t minDist = INT64_MAX;
+
+              OutputSection *relocParent = nullptr;
+              auto it = ctx.splitParentMap.find(osec);
+              if (it != ctx.splitParentMap.end())
+                relocParent = it->second;
+
+              for (GotPartitionSection *part : ctx.gotPartitions) {
+                OutputSection *partParent = nullptr;
+                auto it2 = ctx.gotPartitionParentMap.find(part->getParent());
+                if (it2 != ctx.gotPartitionParentMap.end())
+                  partParent = it2->second;
+
+                if (partParent && partParent == relocParent) {
+                  uint64_t gpVA = part->getVA();
+                  int64_t d = (int64_t)gpVA - p;
+                  if (d >= -threshold && d < threshold) {
+                    int64_t absD = d < 0 ? -d : d;
+                    if (absD < minDist) {
+                      minDist = absD;
+                      gp = part;
+                    }
+                  }
+                }
+              }
+
+              if (!gp)
+                continue;
+
+              uint64_t gpOff = gp->addEntry(*rel.sym);
+
+              auto &gotSym = gp->gotSyms[rel.sym];
+              if (!gotSym) {
+                gotSym = makeDefined(ctx, gp->file, rel.sym->getName(),
+                                     STB_LOCAL, STV_DEFAULT, STT_NOTYPE, gpOff,
+                                     /*size=*/0, gp);
+              }
+
+              rel.sym = gotSym;
+              rel.expr = R_PC;
+              rel.type = R_X86_64_PC32;
+              changed = true;
+            }
+          }
         }
-        rel.expr = R_GOT_PC;
       }
     }
   }
+
   return changed;
 }
 

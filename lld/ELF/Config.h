@@ -13,6 +13,7 @@
 #include "lld/Common/CommonLinkerContext.h"
 #include "lld/Common/ErrorHandler.h"
 #include "llvm/ADT/CachedHashString.h"
+#include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/DenseSet.h"
 #include "llvm/ADT/MapVector.h"
 #include "llvm/ADT/SetVector.h"
@@ -63,6 +64,7 @@ class EhFrameSection;
 class GdbIndexSection;
 class GnuHashTableSection;
 class GotPltSection;
+class GotPartitionSection;
 class GotSection;
 class HashTableSection;
 class IgotPltSection;
@@ -479,6 +481,7 @@ struct Config {
   uint64_t commonPageSize;
   uint64_t maxPageSize;
   uint64_t mipsGotSize;
+  uint64_t gotPartitionThreshold;
   uint64_t zStackSize;
   unsigned ltoPartitions;
   unsigned ltoo;
@@ -670,6 +673,10 @@ struct Ctx : CommonLinkerContext {
   SmallVector<OutputSection *, 0> outputSections;
 
   InStruct in;
+  SmallVector<GotPartitionSection *, 0> gotPartitions;
+  SmallVector<OutputSection *, 0> gotPartitionOutputSections;
+  llvm::DenseMap<const OutputSection *, OutputSection *> gotPartitionParentMap;
+  llvm::DenseMap<const OutputSection *, OutputSection *> splitParentMap;
 
   // Some linker-generated symbols need to be created as
   // Defined symbols.

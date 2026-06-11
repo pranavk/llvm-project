@@ -147,6 +147,35 @@ protected:
   SmallVector<AuthEntryInfo, 0> authEntries;
 };
 
+class GotPartitionSection final : public SyntheticSection {
+public:
+  GotPartitionSection(Ctx &ctx, OutputSection *os, uint64_t off,
+                      uint32_t index);
+  size_t getSize() const override;
+  void finalizeContents() override;
+  void writeTo(uint8_t *buf) override;
+  bool isNeeded() const override { return numEntries > 0; }
+
+  static bool classof(const SectionBase *sec) {
+    if (sec->kind() != InputSectionBase::Synthetic)
+      return false;
+    auto *s = cast<SyntheticSection>(sec);
+    for (auto *gp : s->ctx.gotPartitions)
+      if (gp == s)
+        return true;
+    return false;
+  }
+
+  void addConstant(const Relocation &r) { addReloc(r); }
+  uint64_t addEntry(Symbol &sym);
+  llvm::DenseMap<Symbol *, Defined *> gotSyms;
+  uint32_t index;
+
+private:
+  llvm::DenseMap<Symbol *, uint64_t> entryMap;
+  size_t numEntries = 0;
+};
+
 // .note.GNU-stack section.
 class GnuStackSection : public SyntheticSection {
 public:

@@ -594,6 +594,29 @@ void GotSection::writeTo(uint8_t *buf) {
   }
 }
 
+GotPartitionSection::GotPartitionSection(Ctx &ctx, OutputSection *os,
+                                         uint64_t off, uint32_t index)
+    : SyntheticSection(ctx, os->name, SHT_PROGBITS, SHF_ALLOC | SHF_WRITE,
+                       ctx.target->gotEntrySize),
+      index(index) {
+  this->parent = os;
+  this->outSecOff = off;
+}
+
+size_t GotPartitionSection::getSize() const {
+  return numEntries * ctx.target->gotEntrySize;
+}
+
+void GotPartitionSection::finalizeContents() {
+  size = numEntries * ctx.target->gotEntrySize;
+}
+
+void GotPartitionSection::writeTo(uint8_t *buf) {
+  if (size == 0)
+    return;
+  ctx.target->relocateAlloc(*this, buf);
+}
+
 static uint64_t getMipsPageCount(uint64_t size) {
   return (size + 0xfffe) / 0xffff + 1;
 }
@@ -1424,8 +1447,10 @@ DynamicSection<ELFT>::computeContents() {
 }
 
 template <class ELFT> void DynamicSection<ELFT>::finalizeContents() {
-  if (OutputSection *sec = ctx.in.dynStrTab->getParent())
+  if (OutputSection *sec = ctx.in.dynStrTab->getParent()) {
     getParent()->link = sec->sectionIndex;
+    getParent()->linkSec = sec;
+  }
   this->size = computeContents().size() * this->entsize;
 }
 
@@ -1516,10 +1541,13 @@ void RelocationBaseSection::finalizeContents() {
   // When linking glibc statically, .rel{,a}.plt contains R_*_IRELATIVE
   // relocations due to IFUNC (e.g. strcpy). sh_link will be set to 0 in that
   // case.
-  if (symTab && symTab->getParent())
+  if (symTab && symTab->getParent()) {
     getParent()->link = symTab->getParent()->sectionIndex;
-  else
+    getParent()->linkSec = symTab->getParent();
+  } else {
     getParent()->link = 0;
+    getParent()->linkSec = nullptr;
+  }
 
   if (ctx.in.relaPlt.get() == this) {
     InputSection *sec = ctx.target->usesGotPlt
@@ -1528,6 +1556,7 @@ void RelocationBaseSection::finalizeContents() {
     if (sec->getParent()) {
       getParent()->flags |= ELF::SHF_INFO_LINK;
       getParent()->info = sec->getParent()->sectionIndex;
+      getParent()->infoSec = ctx.in.gotPlt->getParent();
     }
   }
 }
@@ -1978,8 +2007,10 @@ static void sortMipsSymbols(Ctx &ctx, SmallVector<SymbolTableEntry, 0> &syms) {
 }
 
 void SymbolTableBaseSection::finalizeContents() {
-  if (OutputSection *sec = strTabSec.getParent())
+  if (OutputSection *sec = strTabSec.getParent()) {
     getParent()->link = sec->sectionIndex;
+    getParent()->linkSec = sec;
+  }
 
   if (this->type != SHT_DYNSYM) {
     sortSymTabSymbols();
@@ -2261,8 +2292,10 @@ GnuHashTableSection::GnuHashTableSection(Ctx &ctx)
                        ctx.arg.wordsize) {}
 
 void GnuHashTableSection::finalizeContents() {
-  if (OutputSection *sec = ctx.in.dynSymTab->getParent())
+  if (OutputSection *sec = ctx.in.dynSymTab->getParent()) {
     getParent()->link = sec->sectionIndex;
+    getParent()->linkSec = sec;
+  }
 
   // Computes bloom filter size in word size. We want to allocate 12
   // bits for each symbol. It must be a power of two.
@@ -2373,8 +2406,10 @@ HashTableSection::HashTableSection(Ctx &ctx)
 void HashTableSection::finalizeContents() {
   SymbolTableBaseSection *symTab = ctx.in.dynSymTab.get();
 
-  if (OutputSection *sec = symTab->getParent())
+  if (OutputSection *sec = symTab->getParent()) {
     getParent()->link = sec->sectionIndex;
+    getParent()->linkSec = sec;
+  }
 
   unsigned numEntries = 2;               // nbucket and nchain.
   numEntries += symTab->getNumSymbols(); // The chain entries.
@@ -3527,8 +3562,10 @@ void VersionDefinitionSection::finalizeContents() {
   for (const VersionDefinition &v : namedVersionDefs(ctx))
     verDefNameOffs.push_back(ctx.in.dynStrTab->addString(v.name));
 
-  if (OutputSection *sec = ctx.in.dynStrTab->getParent())
+  if (OutputSection *sec = ctx.in.dynStrTab->getParent()) {
     getParent()->link = sec->sectionIndex;
+    getParent()->linkSec = sec;
+  }
 
   // sh_info should be set to the number of definitions. This fact is missed in
   // documentation, but confirmed by binutils community:
@@ -3579,8 +3616,10 @@ VersionTableSection::VersionTableSection(Ctx &ctx)
 }
 
 void VersionTableSection::finalizeContents() {
-  if (OutputSection *osec = ctx.in.dynSymTab->getParent())
+  if (OutputSection *osec = ctx.in.dynSymTab->getParent()) {
     getParent()->link = osec->sectionIndex;
+    getParent()->linkSec = osec;
+  }
 }
 
 size_t VersionTableSection::getSize() const {
@@ -3660,8 +3699,10 @@ template <class ELFT> void VersionNeedSection<ELFT>::finalizeContents() {
     }
   }
 
-  if (OutputSection *sec = ctx.in.dynStrTab->getParent())
+  if (OutputSection *sec = ctx.in.dynStrTab->getParent()) {
     getParent()->link = sec->sectionIndex;
+    getParent()->linkSec = sec;
+  }
   getParent()->info = verneeds.size();
 }
 

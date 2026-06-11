@@ -1140,6 +1140,9 @@ MCSection *TargetLoweringObjectFileELF::getSectionForMachineBasicBlock(
   }
 
   unsigned Flags = ELF::SHF_ALLOC | ELF::SHF_EXECINSTR;
+  if (const auto *ParentSection =
+          static_cast<const MCSectionELF *>(MBB.getParent()->getSection()))
+    Flags |= (ParentSection->getFlags() & ELF::SHF_X86_64_LARGE);
   std::string GroupName;
   if (F.hasComdat()) {
     Flags |= ELF::SHF_GROUP;

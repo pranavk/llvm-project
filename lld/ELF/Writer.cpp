@@ -566,6 +566,11 @@ static bool isRelroSection(Ctx &ctx, const OutputSection *sec) {
   if (!(flags & SHF_ALLOC) || !(flags & SHF_WRITE))
     return false;
 
+  SmallVector<InputSection *, 0> storage;
+  for (InputSection *isec : getInputSections(*sec, storage))
+    if (isa<GotPartitionSection>(isec))
+      return true;
+
   // Once initialized, TLS data segments are used as data templates
   // for a thread-local storage. For each new thread, runtime
   // allocates memory for a TLS and copy templates there. No thread
@@ -681,6 +686,14 @@ unsigned elf::getSectionRank(Ctx &ctx, OutputSection &osec) {
   // places.
   bool isExec = osec.flags & SHF_EXECINSTR;
   bool isWrite = osec.flags & SHF_WRITE;
+  SmallVector<InputSection *, 0> storage;
+  for (InputSection *isec : getInputSections(osec, storage)) {
+    if (isa<GotPartitionSection>(isec)) {
+      isExec = true;
+      isWrite = false;
+      break;
+    }
+  }
   bool isLarge = osec.flags & SHF_X86_64_LARGE && ctx.arg.emachine == EM_X86_64;
 
   if (!isWrite && !isExec) {
@@ -1492,6 +1505,103 @@ static void randomizeSectionPadding(Ctx &ctx) {
   }
 }
 
+// Forward declaration as mayGrowLate is defined later. This helps with frequent rebasing
+static bool mayGrowLate(Ctx &ctx, SyntheticSection *sec);
+
+static bool pruneEmptyPartitions(Ctx &ctx) {
+  if (ctx.arg.relocatable || ctx.arg.gotPartitionThreshold == UINT64_MAX)
+    return false;
+
+  bool pruned = false;
+  DenseSet<GotPartitionSection *> toRemove;
+  for (GotPartitionSection *gp : ctx.gotPartitions) {
+    if (!gp->isNeeded()) {
+      toRemove.insert(gp);
+    }
+  }
+
+  if (!toRemove.empty()) {
+    pruned = true;
+    llvm::erase_if(ctx.script->sectionCommands, [&](SectionCommand *cmd) {
+      if (auto *osd = dyn_cast<OutputDesc>(cmd)) {
+        OutputSection *osec = &osd->osec;
+        if (osec->commands.empty())
+          return false;
+        if (auto *isd = dyn_cast<InputSectionDescription>(osec->commands.back())) {
+          if (!isd->sections.empty()) {
+            if (auto *gp = dyn_cast<GotPartitionSection>(isd->sections[0])) {
+              if (toRemove.contains(gp)) {
+                return true;
+              }
+            }
+          }
+        }
+      }
+      return false;
+    });
+
+    llvm::erase_if(ctx.inputSections, [&](InputSectionBase *s) {
+      if (auto *gp = dyn_cast<GotPartitionSection>(s))
+        return toRemove.contains(gp);
+      return false;
+    });
+
+    llvm::erase_if(ctx.gotPartitions, [&](GotPartitionSection *gp) {
+      return toRemove.contains(gp);
+    });
+
+    llvm::erase_if(ctx.outputSections, [&](OutputSection *osec) {
+      for (SectionCommand *cmd : osec->commands) {
+        if (auto *isd = dyn_cast<InputSectionDescription>(cmd)) {
+          for (InputSection *isec : isd->sections) {
+            if (auto *gp = dyn_cast<GotPartitionSection>(isec)) {
+              if (toRemove.contains(gp))
+                return true;
+            }
+          }
+        }
+      }
+      return false;
+    });
+  }
+
+  auto pruneSection = [&](SyntheticSection *sec) {
+    if (!sec || sec->isNeeded() || !sec->getParent())
+      return;
+    OutputSection *osec = sec->getParent();
+
+    if (mayGrowLate(ctx, sec))
+      return;
+
+    if (osec->location != "<internal>")
+      return;
+    llvm::erase_if(ctx.script->sectionCommands, [&](SectionCommand *cmd) {
+      if (auto *osd = dyn_cast<OutputDesc>(cmd)) {
+        if (&osd->osec == osec) {
+          pruned = true;
+          return true;
+        }
+      }
+      return false;
+    });
+    llvm::erase_if(ctx.inputSections, [&](InputSectionBase *x) { return x == sec; });
+  };
+
+  pruneSection(ctx.in.relrDyn.get());
+  pruneSection(ctx.in.relaDyn.get());
+
+  if (pruned) {
+    ctx.outputSections.clear();
+    for (SectionCommand *cmd : ctx.script->sectionCommands)
+      if (auto *osd = dyn_cast<OutputDesc>(cmd)) {
+        ctx.outputSections.push_back(&osd->osec);
+        osd->osec.sectionIndex = ctx.outputSections.size();
+      }
+  }
+
+  return pruned;
+}
+
 // We need to generate and finalize the content that depends on the address of
 // InputSections. As the generation of the content may also alter InputSection
 // addresses we must converge to a fixed point. We do that here. See the comment
@@ -1521,6 +1631,7 @@ template <class ELFT> void Writer<ELFT>::finalizeAddressDependentContent() {
 
   // Iterate until a fixed point is reached, skipping relocatable links since
   // the final addresses are unavailable.
+  bool anyPruned = false;
   uint32_t pass = 0, assignPasses = 0;
   while (!ctx.arg.relocatable) {
     bool changed = ctx.target->needsThunks
@@ -1549,6 +1660,8 @@ template <class ELFT> void Writer<ELFT>::finalizeAddressDependentContent() {
     }
 
     finalizeSynthetic(ctx, ctx.in.got.get());
+    for (GotPartitionSection *gp : ctx.gotPartitions)
+      finalizeSynthetic(ctx, gp);
     if (ctx.in.mipsGot)
       ctx.in.mipsGot->updateAllocSize(ctx);
 
@@ -1602,8 +1715,14 @@ template <class ELFT> void Writer<ELFT>::finalizeAddressDependentContent() {
       // Some symbols may be dependent on section addresses. When we break the
       // loop, the symbol values are finalized because a previous
       // assignAddresses() finalized section addresses.
-      if (!changes.first && !changes.second)
+      if (!changes.first && !changes.second) {
+        if (pruneEmptyPartitions(ctx)) {
+          anyPruned = true;
+          ctx.script->assignAddresses();
+          continue;
+        }
         break;
+      }
       if (++assignPasses == 5) {
         if (changes.first)
           Err(ctx) << "address (0x" << Twine::utohexstr(changes.first->addr)
@@ -1623,8 +1742,17 @@ template <class ELFT> void Writer<ELFT>::finalizeAddressDependentContent() {
     if (errCount(ctx))
       break;
   }
+
   if (!ctx.arg.relocatable)
     ctx.target->finalizeRelax(pass);
+
+  if (anyPruned && !ctx.arg.relocatable && !ctx.arg.oFormatBinary) {
+    ctx.phdrs = createPhdrs();
+    ctx.tlsPhdr = nullptr;
+    for (auto &p : ctx.phdrs)
+      if (p->p_type == PT_TLS)
+        ctx.tlsPhdr = p.get();
+  }
 
   if (ctx.arg.relocatable)
     for (OutputSection *sec : ctx.outputSections)
@@ -1749,6 +1877,12 @@ template <class ELFT> void Writer<ELFT>::optimizeBasicBlockJumps() {
 
 // Sections that finalizeAddressDependentContent may add to.
 static bool mayGrowLate(Ctx &ctx, SyntheticSection *sec) {
+  // LCM-BEGIN
+  if (ctx.arg.emachine == EM_X86_64 && ctx.arg.isPic && ctx.arg.relax &&
+    ctx.in.got && ctx.in.got->hasGotOffRel.load() &&
+    (sec == ctx.in.relaDyn.get() || sec == ctx.in.relrDyn.get()))
+    return true;
+  // LCM-END
   if (sec != ctx.in.relaDyn.get())
     return false;
   // Relocations may move here from .relr.auth.dyn.
@@ -1810,8 +1944,65 @@ static void removeUnusedSyntheticSections(Ctx &ctx) {
   });
 }
 
+template <class ELFT>
+static bool hasGotRelocations(Ctx &ctx, OutputSection *osec) {
+  for (SectionCommand *cmd : osec->commands) {
+    if (auto *isd = dyn_cast<InputSectionDescription>(cmd)) {
+      for (InputSection *isec : isd->sections) {
+        auto rs = isec->relsOrRelas<ELFT>();
+        bool hasGot = false;
+        auto check = [&](auto relocs) {
+          for (const auto &rel : relocs) {
+            RelType type = rel.getType(ctx.arg.isMips64EL);
+            if (type == llvm::ELF::R_X86_64_GOTPCREL ||
+                type == llvm::ELF::R_X86_64_GOTPCRELX ||
+                type == llvm::ELF::R_X86_64_REX_GOTPCRELX ||
+                type == llvm::ELF::R_X86_64_CODE_4_GOTPCRELX) {
+              hasGot = true;
+              break;
+            }
+          }
+        };
+        if (rs.areRelocsCrel())
+          check(rs.crels);
+        else if (rs.areRelocsRel())
+          check(rs.rels);
+        else
+          check(rs.relas);
+        if (hasGot)
+          return true;
+      }
+    }
+  }
+  return false;
+}
+
 // Create output section objects and add them to OutputSections.
 template <class ELFT> void Writer<ELFT>::finalizeSections() {
+  if (ctx.arg.emachine == EM_X86_64) {
+    // Populate GOT partition output sections with their synthetic input
+    // sections.
+    uint32_t gotPartIndex = 0;
+    for (OutputSection *osec : ctx.gotPartitionOutputSections) {
+      auto *gp = make<GotPartitionSection>(ctx, osec, 0, gotPartIndex++);
+      ctx.gotPartitions.push_back(gp);
+
+      if (osec->commands.empty() ||
+          !isa<InputSectionDescription>(osec->commands.back()))
+        osec->commands.push_back(make<InputSectionDescription>(""));
+      auto *isd = cast<InputSectionDescription>(osec->commands.back());
+      isd->sections.push_back(gp);
+      osec->commitSection(gp);
+
+      auto it = ctx.gotPartitionParentMap.find(osec);
+      if (it != ctx.gotPartitionParentMap.end()) {
+        OutputSection *parentSec = it->second;
+        if (parentSec->flags & SHF_X86_64_LARGE)
+          osec->flags |= SHF_X86_64_LARGE;
+      }
+    }
+  }
+
   if (!ctx.arg.relocatable) {
     ctx.out.preinitArray = findSection(ctx, ".preinit_array");
     ctx.out.initArray = findSection(ctx, ".init_array");
@@ -2075,6 +2266,8 @@ template <class ELFT> void Writer<ELFT>::finalizeSections() {
     finalizeSynthetic(ctx, ctx.in.shStrTab.get());
     finalizeSynthetic(ctx, ctx.in.strTab.get());
     finalizeSynthetic(ctx, ctx.in.got.get());
+    for (GotPartitionSection *gp : ctx.gotPartitions)
+      finalizeSynthetic(ctx, gp);
     finalizeSynthetic(ctx, ctx.in.mipsGot.get());
     finalizeSynthetic(ctx, ctx.in.igotPlt.get());
     finalizeSynthetic(ctx, ctx.in.gotPlt.get());
@@ -2379,6 +2572,8 @@ SmallVector<std::unique_ptr<PhdrEntry>, 0> Writer<ELFT>::createPhdrs() {
       load->p_flags |= newFlags;
     } else {
       load = addHdr(PT_LOAD, newFlags);
+      if (sec->ptLoad)
+        load->lmaOffset = sec->ptLoad->lmaOffset;
       flags = newFlags;
     }
 

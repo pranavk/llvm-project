@@ -61,8 +61,8 @@ void OutputSection::writeHeaderTo(typename ELFT::Shdr *shdr) {
   shdr->sh_type = type;
   shdr->sh_offset = offset;
   shdr->sh_flags = flags;
-  shdr->sh_info = info;
-  shdr->sh_link = link;
+  shdr->sh_info = infoSec ? infoSec->sectionIndex : info;
+  shdr->sh_link = linkSec ? linkSec->sectionIndex : link;
   shdr->sh_addr = addr;
   shdr->sh_size = size;
   shdr->sh_name = shName;
@@ -110,6 +110,8 @@ void OutputSection::recordSection(InputSectionBase *isec) {
     commands.push_back(make<InputSectionDescription>(""));
   auto *isd = cast<InputSectionDescription>(commands.back());
   isd->sectionBases.push_back(isec);
+  accumulatedSize = alignToPowerOf2(accumulatedSize, isec->addralign);
+  accumulatedSize += isec->getSize();
 }
 
 // Update fields (type, flags, alignment, etc) according to the InputSection

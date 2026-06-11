@@ -64,10 +64,17 @@ public:
   // it may have a non-null value.
   OutputSection *relocationSection = nullptr;
 
+  // Pointers to the sections this section links to (sh_link) or references (sh_info).
+  // If set, we use their sectionIndex dynamically when writing the header,
+  // which ensures the links remain correct even if indices shift due to pruning.
+  OutputSection *linkSec = nullptr;
+  OutputSection *infoSec = nullptr;
+
   // Initially this field is the number of InputSections that have been added to
   // the OutputSection so far. Later on, after a call to assignAddresses, it
   // corresponds to the Elf_Shdr member.
   uint64_t size = 0;
+  uint64_t accumulatedSize = 0;
 
   // The following fields correspond to Elf_Shdr members.
   uint64_t offset = 0;

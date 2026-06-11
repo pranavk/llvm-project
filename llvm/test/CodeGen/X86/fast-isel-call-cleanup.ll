@@ -9,7 +9,7 @@ entry:
 ; FastISel's local value code was dead, so it's gone.
 ; CHECK-NOT: movl $42,
 ; SDag-ISel's arg mov:
-; CHECK: movabsq $targetfn, %[[REG:[^ ]*]]
+; CHECK: movq targetfn@GOTPCREL(%rip), %[[REG:[^ ]*]]
 ; CHECK: movl $42, %edi
 ; CHECK: callq *%[[REG]]
 
