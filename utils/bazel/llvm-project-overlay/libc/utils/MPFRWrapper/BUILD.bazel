@@ -38,6 +38,10 @@ libc_test_library(
             "//libc:mpfr_system": ["-layering_check"],
         },
     ),
+    linkopts = [
+        "-Wl,--defsym=mpfr_get_float128=0",
+        "-Wl,--defsym=mpfr_set_float128=0",
+    ],
     deps = [
         ":mpfr_impl",
         "//libc:__support_common",
@@ -66,6 +70,10 @@ libc_test_library(
             "//libc:mpfr_system": ["-layering_check"],
         },
     ),
+    linkopts = [
+        "-Wl,--defsym=mpfr_get_float128=0",
+        "-Wl,--defsym=mpfr_set_float128=0",
+    ],
     deps = [
         ":mp_common",
         ":mpfr_impl",
