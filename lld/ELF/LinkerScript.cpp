@@ -1201,6 +1201,29 @@ void LinkerScript::addOrphanSections() {
   // Keep just InputSection.
   ctx.inputSections.resize(n);
 
+  if (ctx.arg.emachine == EM_X86_64) {
+    for (auto &it : map) {
+      TinyPtrVector<OutputDesc *> &sections = it.second;
+      if (sections.size() == 1 && !sections[0]->osec.gotPartition &&
+          !sections[0]->osec.commands.empty()) {
+        auto *isd =
+            dyn_cast<InputSectionDescription>(sections[0]->osec.commands[0]);
+        if (isd && !isd->sectionBases.empty()) {
+          InputSectionBase *firstIsec = isd->sectionBases[0];
+          if ((firstIsec->flags & SHF_EXECINSTR) &&
+              (firstIsec->flags & SHF_X86_64_LARGE)) {
+            auto [gotPart, gp] =
+                createGotPartitionSection(ctx, &sections[0]->osec, 0);
+            sections[0]->osec.gotPartition = gp;
+            auto pos = llvm::find(v, sections[0]);
+            assert(pos != v.end());
+            v.insert(pos + 1, gotPart);
+          }
+        }
+      }
+    }
+  }
+
   // If no SECTIONS command was given, we should insert sections commands
   // before others, so that we can handle scripts which refers them,
   // for example: "foo = ABSOLUTE(ADDR(.text)));".
