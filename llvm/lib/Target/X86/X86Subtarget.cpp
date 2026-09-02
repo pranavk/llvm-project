@@ -196,9 +196,6 @@ X86Subtarget::classifyGlobalFunctionReference(const GlobalValue *GV) const {
 unsigned char
 X86Subtarget::classifyGlobalFunctionReference(const GlobalValue *GV,
                                               const Module &M) const {
-  if (is64Bit() && TM.getCodeModel() == CodeModel::Large && isTargetELF())
-    return X86II::MO_GOTPCREL;
-
   if (TM.shouldAssumeDSOLocal(GV))
     return X86II::MO_NO_FLAG;
 
