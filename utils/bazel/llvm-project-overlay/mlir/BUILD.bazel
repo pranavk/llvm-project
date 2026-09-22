@@ -4965,6 +4965,7 @@ cc_library(
         ":SideEffectInterfaces",
         ":UBDialect",
         "//llvm:Support",
+        ":UBDialect",
     ],
 )
 
