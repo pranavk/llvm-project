@@ -83,6 +83,7 @@ cc_binary(
         "//clang:ast_matchers",
         "//clang:basic",
         "//clang:driver",
+        "//clang:diagnostic_defs_gen",
         "//clang:frontend",
         "//clang:tooling",
         "//llvm:Support",
