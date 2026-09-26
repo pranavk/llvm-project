@@ -4900,6 +4900,24 @@ libc_function(
 )
 
 libc_function(
+    name = "inet_pton",
+    srcs = ["src/arpa/inet/inet_pton.cpp"],
+    hdrs = ["src/arpa/inet/inet_pton.h"],
+    deps = [
+        ":__support_common",
+        ":__support_libc_errno",
+        ":__support_macros_config",
+        ":__support_macros_null_check",
+        ":__support_net_address",
+        ":hdr_errno_macros",
+        ":hdr_stdint_proxy",
+        ":hdr_sys_socket_macros",
+        ":types_struct_in6_addr",
+        ":types_struct_in_addr",
+    ],
+)
+
+libc_function(
     name = "ntohl",
     srcs = ["src/arpa/inet/ntohl.cpp"],
     hdrs = ["src/arpa/inet/ntohl.h"],
@@ -11448,6 +11466,7 @@ libc_support_library(
         ":__support_macros_config",
         ":__support_str_to_integer",
         ":hdr_inet_address_macros",
+        ":hdr_stdint_proxy",
         ":string_memory_utils",
         ":types_in_addr_t",
         ":types_struct_in6_addr",
