@@ -285,6 +285,7 @@ cc_library(
         ":Initialization",
         ":Interpreter",
         ":InterpreterHeaders",
+        ":Register",
         ":Symbol",
         ":SymbolHeaders",
         ":Target",
@@ -857,6 +858,26 @@ cc_library(
         "//llvm:BinaryFormat",
         "//llvm:MC",
         "//llvm:Support",
+    ],
+)
+
+cc_library(
+    name = "Register",
+    srcs = glob([
+        "source/Register/**/*.cpp",
+    ]),
+    hdrs = glob([
+        "source/Register/**/*.h",
+    ]),
+    features = ["-parse_headers"],
+    includes = ["source"],
+    deps = [
+        ":Headers",
+        ":TargetHeaders",
+        ":Utility",
+        ":UtilityPrivateHeaders",
+        "//llvm:Support",
+        "//llvm:TargetParser",
     ],
 )
 
