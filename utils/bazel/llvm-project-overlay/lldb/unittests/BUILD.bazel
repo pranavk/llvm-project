@@ -424,6 +424,22 @@ cc_test(
 )
 
 cc_test(
+    name = "LanguageDLanguageTests",
+    srcs = glob(["Language/D/*.cpp"]),
+    deps = [
+        ":lldbUtilityHelpers",
+        "//lldb:Core",
+        "//lldb:Headers",
+        "//lldb:Utility",
+        "//lldb/source/Plugins:PluginDLanguage",
+        "//llvm:Support",
+        "//third-party/unittest:gmock",
+        "//third-party/unittest:gtest",
+        "//third-party/unittest:gtest_main",
+    ],
+)
+
+cc_test(
     name = "LanguageCPlusPlusTests",
     srcs = glob(["Language/CPlusPlus/*.cpp"]),
     deps = [
@@ -545,6 +561,7 @@ cc_test(
         "//lldb:Target",
         "//lldb:Utility",
         "//lldb/source/Plugins:PluginCPlusPlusLanguage",
+        "//lldb/source/Plugins:PluginDLanguage",
         "//lldb/source/Plugins:PluginObjectFileELF",
         "//lldb/source/Plugins:PluginObjectFileMachO",
         "//lldb/source/Plugins:PluginObjectFilePECOFF",

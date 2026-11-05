@@ -28,6 +28,7 @@ DEFAULT_PLUGINS = [
     "CPlusPlusLanguage",
     "CPPRuntime",
     "DisassemblerLLVMC",
+    "DLanguage",
     "HighlighterClang",
     "HighlighterDefault",
     "DynamicLoaderDarwinKernel",
